@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Marveen Codex Bridge</title>
+  <link rel="stylesheet" href="/dashboard/styles.css">
+</head>
+<body>
+  <header>
+    <div>
+      <p class="eyebrow">Federation Edition</p>
+      <h1>Marveen Codex Bridge</h1>
+    </div>
+    <div id="connection" class="badge offline">Nincs kapcsolat</div>
+  </header>
+
+  <main>
+    <section id="login-panel" class="panel login">
+      <h2>Admin hozzáférés</h2>
+      <p>A token csak ebben a böngészőfülben marad meg.</p>
+      <form id="login-form">
+        <label for="token">Admin token</label>
+        <div class="row">
+          <input id="token" name="token" type="password" autocomplete="off" required>
+          <button type="submit">Kapcsolódás</button>
+        </div>
+        <p id="login-error" class="error" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <div id="dashboard" hidden>
+      <nav>
+        <button id="refresh" type="button">Frissítés</button>
+        <button id="logout" class="secondary" type="button">Kilépés</button>
+      </nav>
+
+      <section class="cards" id="summary-cards"></section>
+
+      <section class="panel">
+        <h2>Codex agentek</h2>
+        <div id="agents"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Függő jóváhagyások</h2>
+        <div id="approvals"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Legutóbbi futások</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Agent</th><th>Állapot</th><th>Run</th><th>Frissítve</th></tr></thead>
+            <tbody id="runs"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Képartifactok</h2>
+        <div id="artifacts" class="artifact-grid"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="/dashboard/app.js" defer></script>
+</body>
+</html>

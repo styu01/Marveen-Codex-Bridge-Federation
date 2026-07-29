@@ -1,0 +1,16 @@
+{
+  "name": "marveen-codex-bridge-federation",
+  "version": "0.3.0-phase7.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "verify": "bash scripts/verify-phase7.sh"
+  },
+  "dependencies": {
+    "better-sqlite3": "11.10.0"
+  }
+}
