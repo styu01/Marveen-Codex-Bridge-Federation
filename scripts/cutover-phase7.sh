@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="0.3.0-phase7.0"
+VERSION="0.3.0-phase7.1"
+EXPECTED_MARVEEN_VERSION="1.25.1"
 SOURCE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 MARVEEN_ROOT="${HOME}/marveen"
 PHASE0_ROOT=""
@@ -30,7 +31,7 @@ Options:
 Without --execute this command is a read-only preflight.
 
 Execute mode performs the controlled production cutover to the already tested
-Marveen 1.25.0 candidate, pairs the standalone Bridge only through Marveen's
+Marveen 1.25.1 candidate, pairs the standalone Bridge only through Marveen's
 public Federation API, activates it, and runs an exactly-once live canary.
 
 The Marveen source is never patched. On failure, Federation is disabled first.
@@ -122,11 +123,11 @@ CANDIDATE_VERSION="$(
       process.stdin.on("data", (chunk) => { text += chunk })
       process.stdin.on("end", () => {
         const version = JSON.parse(text).version
-        if (version !== "1.25.0") process.exit(1)
+        if (version !== process.argv[1]) process.exit(1)
         process.stdout.write(version)
       })
-    '
-)" || fail "candidate is not Marveen 1.25.0"
+    ' "${EXPECTED_MARVEEN_VERSION}"
+)" || fail "candidate is not Marveen ${EXPECTED_MARVEEN_VERSION}"
 pass "candidate commit is Marveen ${CANDIDATE_VERSION} and bundle is verified"
 
 command -v systemctl >/dev/null || fail "systemctl is required"
@@ -192,7 +193,7 @@ install -d -m 0700 "${RECORD}"
 OLD_HEAD="$(git -C "${MARVEEN_ROOT}" rev-parse HEAD)"
 OLD_BRANCH="$(git -C "${MARVEEN_ROOT}" symbolic-ref --quiet --short HEAD)" \
   || fail "production Marveen must be on a named branch"
-NEW_BRANCH="local/marveen-v1.25.0-production-${STAMP}"
+NEW_BRANCH="local/marveen-v${EXPECTED_MARVEEN_VERSION}-production-${STAMP}"
 OLD_NODE_MODULES="${RECORD}/node_modules-before-cutover"
 NEW_NODE_MODULES="${RECORD}/node_modules-failed-candidate"
 STASH_COMMIT=""
@@ -291,8 +292,8 @@ for _ in {1..45}; do
   sleep 2
 done
 [[ "${DASHBOARD_READY:-0}" -eq 1 ]] \
-  || fail "Marveen 1.25.0 dashboard did not become healthy"
-pass "Marveen 1.25.0 dashboard is healthy; Federation remains disabled"
+  || fail "Marveen ${EXPECTED_MARVEEN_VERSION} dashboard did not become healthy"
+pass "Marveen ${EXPECTED_MARVEEN_VERSION} dashboard is healthy; Federation remains disabled"
 
 "${NODE_REAL}" "${SOURCE_ROOT}/scripts/pair-marveen-phase6.2.mjs" \
   --dashboard-token-file "${DASHBOARD_TOKEN}" \

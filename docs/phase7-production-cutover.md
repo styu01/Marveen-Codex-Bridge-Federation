@@ -1,6 +1,6 @@
-# Phase 7 — controlled production cutover
+# Phase 7.1 — controlled production cutover
 
-Phase 7 activates the Federation Edition without applying a Codex adapter to
+Phase 7.1 activates the Federation Edition without applying a Codex adapter to
 the Marveen source tree.
 
 ## Safety order
@@ -9,7 +9,7 @@ the Marveen source tree.
    fixed Node 22 runtime, Codex login, dashboard health and disabled Federation.
 2. Verify the standalone Bridge candidate and absence of legacy approvals.
 3. Create a private cutover record and stash the complete Marveen working tree.
-4. Switch production Marveen to the already tested 1.25.0 candidate commit.
+4. Switch production Marveen to the already tested 1.25.1 candidate commit.
 5. Preserve the old `node_modules` directory by atomic rename, install clean
    Node 22 dependencies, typecheck, syntax-check and build.
 6. Restart and health-check Marveen while Federation is still disabled.
