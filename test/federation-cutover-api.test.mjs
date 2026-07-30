@@ -210,7 +210,7 @@ test('cutover script keeps rollback and independence invariants', () => {
   const verifier = readFileSync(resolve('scripts/verify-phase7.sh'), 'utf8')
   assert.match(source, /Without --execute this command is a read-only preflight/)
   assert.match(source, /ROLLBACK: disabling Federation first/)
-  assert.match(source, /federation-cutover-api\.mjs" \\\n    disable/)
+  assert.match(source, /federation-cutover-api\.mjs" \\\n\s+disable/)
   assert.match(source, /stash push --include-untracked/)
   assert.match(source, /stash apply "\$\{STASH_COMMIT\}"/)
   assert.match(source, /node_modules-before-cutover/)
@@ -220,6 +220,20 @@ test('cutover script keeps rollback and independence invariants', () => {
   assert.match(source, /mv -- "\$\{OLD_DIST\}" "\$\{MARVEEN_ROOT\}\/dist"/)
   assert.match(source, /systemctl --user disable --now bela-codex-bridge\.service/)
   assert.match(source, /systemctl --user enable --now bela-codex-bridge\.service/)
+  assert.ok(
+    source.indexOf('systemctl --user disable --now bela-codex-bridge.service')
+      < source.indexOf('git -C "${MARVEEN_ROOT}" stash push --include-untracked'),
+    'the real systemd smoke test must happen before Marveen mutation',
+  )
+  assert.ok(
+    source.indexOf('standalone Bridge passed the real systemd sandbox before Marveen mutation')
+      < source.indexOf('git -C "${MARVEEN_ROOT}" stash push --include-untracked'),
+    'readiness must be proven before the production checkout is stashed',
+  )
+  assert.match(
+    source,
+    /if \[\[ "\$\{MARVEEN_SWITCHED\}" -eq 1 \]\]; then\n    echo "ROLLBACK: disabling Federation first"/,
+  )
   assert.match(source, /PAIRING_CREATED/)
   assert.match(source, /--rollback/)
   assert.match(source, /rollback_verified/)
@@ -268,9 +282,9 @@ test('cutover script keeps rollback and independence invariants', () => {
     source,
     /\b(?:sed|perl|python3?)\b[^\n]*src\/web\/|web\/app\.js.*replace/,
   )
-  assert.match(verifier, /tests 109\$/)
-  assert.match(verifier, /pass 109\$/)
-  assert.match(verifier, /all 109 Phase 1-7/)
+  assert.match(verifier, /tests 113\$/)
+  assert.match(verifier, /pass 113\$/)
+  assert.match(verifier, /all 113 Phase 1-7/)
   assert.doesNotMatch(verifier, /expected exactly 105/)
 })
 
