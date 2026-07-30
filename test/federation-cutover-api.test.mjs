@@ -211,6 +211,7 @@ test('cutover script keeps rollback and independence invariants', () => {
   assert.match(source, /node_modules-before-cutover/)
   assert.match(source, /systemctl --user disable --now bela-codex-bridge\.service/)
   assert.match(source, /EXPECTED_MARVEEN_VERSION="1\.25\.1"/)
+  assert.match(source, /LEGACY_MARVEEN_VERSION="1\.21\.1"/)
   assert.match(source, /candidate is not Marveen \$\{EXPECTED_MARVEEN_VERSION\}/)
   assert.match(source, /\$\{PHASE0_ROOT\}\/MANIFEST\.json/)
   assert.doesNotMatch(source, /\$\{PHASE0_ROOT\}\/manifest\.json/)
@@ -222,12 +223,21 @@ test('cutover script keeps rollback and independence invariants', () => {
     /git -C "\$\{MARVEEN_ROOT\}" bundle verify "\$\{BUNDLE\}"/,
   )
   assert.doesNotMatch(source, /^git bundle verify/m)
+  assert.match(source, /CURRENT_MARVEEN_VERSION/)
+  assert.match(source, /HEAD:src\/web\/routes\/federation\.ts/)
+  assert.match(source, /legacy Marveen \$\{LEGACY_MARVEEN_VERSION\} has no Federation route/)
+  assert.match(source, /current Marveen Federation state cannot be proven disabled/)
+  assert.match(source, /dist\/web\/routes\/federation\.js/)
+  assert.match(source, /dist\/src\/web\/routes\/federation\.js/)
   assert.doesNotMatch(source, /1\.25\.0/)
   assert.match(source, /PHASE 7 PRODUCTION CUTOVER PASS/)
   assert.doesNotMatch(source, /git reset --hard/)
   assert.doesNotMatch(source, /git clean -/)
   assert.doesNotMatch(source, /patch -p/)
-  assert.doesNotMatch(source, /src\/web\/|web\/app\.js.*replace/)
+  assert.doesNotMatch(
+    source,
+    /\b(?:sed|perl|python3?)\b[^\n]*src\/web\/|web\/app\.js.*replace/,
+  )
   assert.match(verifier, /tests 106\$/)
   assert.match(verifier, /pass 106\$/)
   assert.match(verifier, /all 106 Phase 1-7/)

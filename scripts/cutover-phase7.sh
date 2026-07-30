@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="0.3.0-phase7.4"
+VERSION="0.3.0-phase7.5"
+LEGACY_MARVEEN_VERSION="1.21.1"
 EXPECTED_MARVEEN_VERSION="1.25.1"
 SOURCE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 MARVEEN_ROOT="${HOME}/marveen"
@@ -145,11 +146,36 @@ curl --silent --show-error --fail \
   http://127.0.0.1:3420/api/agents >/dev/null \
   || fail "production Marveen API is not healthy"
 
-"${NODE_REAL}" "${SOURCE_ROOT}/scripts/federation-cutover-api.mjs" \
-  preflight-disabled \
-  --token-file "${DASHBOARD_TOKEN}" \
-  --main-agent-id "${MAIN_AGENT_ID}" >/dev/null
-pass "Marveen Federation is reachable and disabled"
+CURRENT_MARVEEN_VERSION="$(
+  git -C "${MARVEEN_ROOT}" show HEAD:package.json |
+    "${NODE_REAL}" -e '
+      let text = ""
+      process.stdin.on("data", (chunk) => { text += chunk })
+      process.stdin.on("end", () => {
+        const version = JSON.parse(text).version
+        if (typeof version !== "string" || version.length === 0) process.exit(1)
+        process.stdout.write(version)
+      })
+    '
+)" || fail "current Marveen version is unreadable"
+
+if git -C "${MARVEEN_ROOT}" cat-file -e \
+  "HEAD:src/web/routes/federation.ts" 2>/dev/null
+then
+  "${NODE_REAL}" "${SOURCE_ROOT}/scripts/federation-cutover-api.mjs" \
+    preflight-disabled \
+    --token-file "${DASHBOARD_TOKEN}" \
+    --main-agent-id "${MAIN_AGENT_ID}" >/dev/null
+  pass "Marveen Federation is reachable and disabled"
+elif [[ "${CURRENT_MARVEEN_VERSION}" == "${LEGACY_MARVEEN_VERSION}" ]] \
+  && [[ ! -e "${MARVEEN_ROOT}/src/web/routes/federation.ts" ]] \
+  && [[ ! -e "${MARVEEN_ROOT}/dist/web/routes/federation.js" ]] \
+  && [[ ! -e "${MARVEEN_ROOT}/dist/src/web/routes/federation.js" ]]
+then
+  pass "legacy Marveen ${LEGACY_MARVEEN_VERSION} has no Federation route and is implicitly disabled"
+else
+  fail "current Marveen Federation state cannot be proven disabled"
+fi
 
 DATA_ROOT="${XDG_DATA_HOME:-${HOME}/.local/share}/marveen-codex-bridge"
 CONFIG_ROOT="${XDG_CONFIG_HOME:-${HOME}/.config}/marveen-codex-bridge"

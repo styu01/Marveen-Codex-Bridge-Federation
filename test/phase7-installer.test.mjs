@@ -75,14 +75,14 @@ exec /usr/bin/id "$@"
   const data = join(home, '.local/share/marveen-codex-bridge')
   const candidate = join(data, 'candidate')
   assert.equal(lstatSync(candidate).isSymbolicLink(), true)
-  assert.match(readlinkSync(candidate), /0\.3\.0-phase7\.4$/)
+  assert.match(readlinkSync(candidate), /0\.3\.0-phase7\.5$/)
   assert.equal(existsSync(join(data, 'current')), false)
   assert.equal(
     JSON.parse(readFileSync(join(
       data,
-      'releases/0.3.0-phase7.4/package.json',
+      'releases/0.3.0-phase7.5/package.json',
     ))).version,
-    '0.3.0-phase7.4',
+    '0.3.0-phase7.5',
   )
   const configRoot = join(home, '.config/marveen-codex-bridge')
   assert.equal(lstatSync(join(configRoot, 'config.json')).mode & 0o777, 0o600)
