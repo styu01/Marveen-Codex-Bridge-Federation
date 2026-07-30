@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="0.3.0-phase7.3"
+VERSION="0.3.0-phase7.4"
 EXPECTED_MARVEEN_VERSION="1.25.1"
 SOURCE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 MARVEEN_ROOT="${HOME}/marveen"
@@ -98,7 +98,7 @@ pass "Phase 0 manifest and checkpoint checksums are verified"
   cd -- "$(dirname -- "${BUNDLE}")"
   sha256sum -c -- "$(basename -- "${BUNDLE}.sha256")" >/dev/null
 ) || fail "candidate bundle checksum mismatch"
-git bundle verify "${BUNDLE}" >/dev/null 2>&1 \
+git -C "${MARVEEN_ROOT}" bundle verify "${BUNDLE}" >/dev/null 2>&1 \
   || fail "candidate bundle is invalid"
 git -C "${MARVEEN_ROOT}" cat-file -e "${CANDIDATE_COMMIT}^{commit}" \
   || fail "candidate commit is not present in the Marveen repository"

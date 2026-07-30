@@ -1,13 +1,13 @@
-# Marveen Codex Bridge 0.3.0 – Phase 7.3
+# Marveen Codex Bridge 0.3.0 – Phase 7.4
 
 Önálló Federation Bridge valódi Codex App Server runtime-mal, a Marveen
 forráskódjának módosítása nélkül.
 
-> **Fejlesztési állapot:** a 0.3.0 Phase 7.3 kiadás előzetes, kontrollált
+> **Fejlesztési állapot:** a 0.3.0 Phase 7.4 kiadás előzetes, kontrollált
 > telepítésre és validációra készült. Éles átállás előtt kötelező a dokumentált
 > preflight, mentés és rollback-útvonal ellenőrzése.
 
-A Phase 7.3 a Marveen 1.25.1-re épített migrációs checkpointot, a Phase 0
+A Phase 7.4 a Marveen 1.25.1-re épített migrációs checkpointot, a Phase 0
 mentést és a Phase 6.3 önálló Bridge-et egy tranzakciós éles átállásban köti
 össze. A Marveen forrását nem patch-eli: a kapcsolat kizárólag a publikus
 Federation API-n történik.

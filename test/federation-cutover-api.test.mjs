@@ -217,6 +217,11 @@ test('cutover script keeps rollback and independence invariants', () => {
   assert.match(source, /\$\{PHASE0_ROOT\}\/SHA256SUMS/)
   assert.match(source, /sha256sum -c -- SHA256SUMS/)
   assert.match(source, /Phase 0 checkpoint checksum verification failed/)
+  assert.match(
+    source,
+    /git -C "\$\{MARVEEN_ROOT\}" bundle verify "\$\{BUNDLE\}"/,
+  )
+  assert.doesNotMatch(source, /^git bundle verify/m)
   assert.doesNotMatch(source, /1\.25\.0/)
   assert.match(source, /PHASE 7 PRODUCTION CUTOVER PASS/)
   assert.doesNotMatch(source, /git reset --hard/)
