@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="0.3.0-phase7.6"
+VERSION="0.3.0-phase7.11"
 SOURCE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 NODE_BIN=""
 CODEX_BIN=""
@@ -68,6 +68,21 @@ UNIT_PATH="${SERVICE_ROOT}/marveen-codex-bridge.service"
 WORKSPACE_ROOT="${DATA_ROOT}/agents/programozo"
 RUNTIME_ROOT="${DATA_ROOT}/runtime"
 DATABASE_PATH="${STATE_ROOT}/federation.sqlite3"
+CODEX_HOME="${CODEX_HOME:-${HOME}/.codex}"
+
+[[ "${CODEX_HOME}" = /* && "${CODEX_HOME}" != "/" ]] \
+  || { echo "CODEX_HOME must be an absolute non-root path" >&2; exit 1; }
+case "${CODEX_HOME}" in
+  "${HOME}"/*) ;;
+  *) echo "CODEX_HOME must stay inside HOME" >&2; exit 1 ;;
+esac
+if [[ -e "${CODEX_HOME}" || -L "${CODEX_HOME}" ]]; then
+  [[ -d "${CODEX_HOME}" && ! -L "${CODEX_HOME}" ]] \
+    || { echo "CODEX_HOME must be a real directory, not a symlink" >&2; exit 1; }
+else
+  install -d -m 0700 "${CODEX_HOME}"
+fi
+chmod go-rwx "${CODEX_HOME}"
 
 install -d -m 0700 \
   "${CONFIG_ROOT}" "${STATE_ROOT}" "${DATA_ROOT}" "${RELEASES_ROOT}" \
@@ -217,6 +232,7 @@ sed \
   -e "s|@BETTER_SQLITE3_PATH@|${RELEASE_ROOT}/node_modules/better-sqlite3|g" \
   -e "s|@STATE_ROOT@|${STATE_ROOT}|g" \
   -e "s|@DATA_ROOT@|${DATA_ROOT}|g" \
+  -e "s|@CODEX_HOME@|${CODEX_HOME}|g" \
   "${RELEASE_ROOT}/systemd/marveen-codex-bridge-federation.service.in" \
   > "${UNIT_PATH}.new"
 chmod 0600 "${UNIT_PATH}.new"
@@ -245,6 +261,7 @@ ln -sfn "${RELEASE_ROOT}" "${CURRENT_LINK}.new"
 mv -Tf "${CURRENT_LINK}.new" "${CURRENT_LINK}"
 
 systemctl --user daemon-reload
+systemctl --user reset-failed marveen-codex-bridge.service 2>/dev/null || true
 systemctl --user enable --now marveen-codex-bridge.service
 
 READY=0
