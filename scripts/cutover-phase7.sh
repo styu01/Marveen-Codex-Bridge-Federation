@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="0.3.0-phase7.6"
+VERSION="0.3.0-phase7.7"
 LEGACY_MARVEEN_VERSION="1.21.1"
 EXPECTED_MARVEEN_VERSION="1.25.1"
 SOURCE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -264,11 +264,13 @@ rollback() {
   trap - ERR INT TERM
   [[ "${CUTOVER_OK}" -eq 0 ]] || return 0
   set +e
-  echo "ROLLBACK: disabling Federation first" >&2
-  "${NODE_REAL}" "${SOURCE_ROOT}/scripts/federation-cutover-api.mjs" \
-    disable --token-file "${DASHBOARD_TOKEN}" >/dev/null 2>&1 \
-    || rollback_failed=1
-  if [[ "${PAIRING_CREATED}" -eq 1 ]]; then
+  if [[ "${MARVEEN_SWITCHED}" -eq 1 ]]; then
+    echo "ROLLBACK: disabling Federation first" >&2
+    "${NODE_REAL}" "${SOURCE_ROOT}/scripts/federation-cutover-api.mjs" \
+      disable --token-file "${DASHBOARD_TOKEN}" >/dev/null 2>&1 \
+      || rollback_failed=1
+  fi
+  if [[ "${MARVEEN_SWITCHED}" -eq 1 && "${PAIRING_CREATED}" -eq 1 ]]; then
     "${NODE_REAL}" "${SOURCE_ROOT}/scripts/pair-marveen-phase6.2.mjs" \
       --dashboard-token-file "${DASHBOARD_TOKEN}" \
       --rollback >/dev/null 2>&1 \
@@ -346,6 +348,22 @@ rollback() {
 }
 trap rollback ERR INT TERM
 
+# Prove that the candidate works under the real systemd sandbox before the
+# production Marveen checkout, dependencies or dist directory are touched.
+# The two Bridge services are never active at the same time.
+LEGACY_STOPPED=1
+systemctl --user disable --now bela-codex-bridge.service
+"${SOURCE_ROOT}/scripts/install-phase7.sh" \
+  --node-bin "${NODE_REAL}" \
+  --codex-bin "${CODEX_REAL}" \
+  --activate \
+  --skip-dependencies \
+  --skip-tests
+curl --silent --show-error --fail http://127.0.0.1:3431/readyz \
+  | grep -q '"status":"ready"' \
+  || fail "standalone Bridge readiness failed before Marveen mutation"
+pass "standalone Bridge passed the real systemd sandbox before Marveen mutation"
+
 git -C "${MARVEEN_ROOT}" stash push --include-untracked \
   -m "phase7-production-cutover-${STAMP}" >/dev/null
 STASH_COMMIT="$(git -C "${MARVEEN_ROOT}" rev-parse refs/stash)"
@@ -416,18 +434,10 @@ PAIRING_CREATED="$(
   preflight-paired --token-file "${DASHBOARD_TOKEN}" >/dev/null
 pass "standalone Bridge peer is paired while Federation is disabled"
 
-systemctl --user disable --now bela-codex-bridge.service
-LEGACY_STOPPED=1
-"${SOURCE_ROOT}/scripts/install-phase7.sh" \
-  --node-bin "${NODE_REAL}" \
-  --codex-bin "${CODEX_REAL}" \
-  --activate \
-  --skip-dependencies \
-  --skip-tests
 curl --silent --show-error --fail http://127.0.0.1:3431/readyz \
   | grep -q '"status":"ready"' \
-  || fail "standalone Bridge readiness failed"
-pass "legacy Bridge is stopped and standalone Bridge is ready"
+  || fail "standalone Bridge readiness was lost before Federation enable"
+pass "legacy Bridge remains stopped and standalone Bridge remains ready"
 
 "${NODE_REAL}" "${SOURCE_ROOT}/scripts/federation-cutover-api.mjs" \
   enable \
