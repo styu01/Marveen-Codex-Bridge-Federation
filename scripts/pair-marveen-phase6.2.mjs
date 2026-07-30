@@ -10,6 +10,7 @@ import { dirname, join } from 'node:path'
 import {
   rollbackMarveenPairing,
   stageMarveenPairing,
+  summarizeMarveenPairing,
 } from '../src/marveen-pairing.mjs'
 
 const home = homedir()
@@ -86,11 +87,7 @@ try {
   const result = options.rollback
     ? await rollbackMarveenPairing(options)
     : await stageMarveenPairing(options)
-  writeResult(options.resultFile, {
-    status: result.status,
-    createdNow: result.createdNow === true,
-    peerId: result.state?.peerId ?? result.peerId ?? result.plan?.peerId,
-  })
+  writeResult(options.resultFile, summarizeMarveenPairing(result))
   if (result.status === 'preflight') {
     console.log('PASS: clean Marveen Federation API is reachable and peer id is available')
     console.log('RESULT: PHASE 6.2 PAIRING PREFLIGHT PASS (NO MUTATION)')
