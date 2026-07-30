@@ -1,13 +1,13 @@
-# Marveen Codex Bridge 0.3.0 – Phase 7.6
+# Marveen Codex Bridge 0.3.0 – Phase 7.7
 
 Önálló Federation Bridge valódi Codex App Server runtime-mal, a Marveen
 forráskódjának módosítása nélkül.
 
-> **Fejlesztési állapot:** a 0.3.0 Phase 7.6 kiadás előzetes, kontrollált
+> **Fejlesztési állapot:** a 0.3.0 Phase 7.7 kiadás előzetes, kontrollált
 > telepítésre és validációra készült. Éles átállás előtt kötelező a dokumentált
 > preflight, mentés és rollback-útvonal ellenőrzése.
 
-A Phase 7.6 a Marveen 1.25.1-re épített migrációs checkpointot, a Phase 0
+A Phase 7.7 a Marveen 1.25.1-re épített migrációs checkpointot, a Phase 0
 mentést és a Phase 6.3 önálló Bridge-et egy tranzakciós éles átállásban köti
 össze. A Marveen forrását nem patch-eli: a kapcsolat kizárólag a publikus
 Federation API-n történik.
@@ -26,11 +26,19 @@ Federation API-n történik.
   modul nem maradhat vissza a kimenetben;
 - az új service kizárólag az immutable release-könyvtárból indul; a `current`
   symlink csak release-pointer, nem runtime-modulútvonal;
+- `ProtectHome=read-only` mellett kizárólag az ellenőrzött, nem symlink
+  `CODEX_HOME` (alapból `~/.codex`) kap írási jogot az App Server
+  hitelesített runtime-állapotához;
+- a Codex stderr hitelesítőadat-mintái maszkolva, sorai korlátozva és a
+  váratlan kilépés diagnosztikai tailjében megőrizve jelennek meg;
+- a valódi systemd-sandbox és readiness próba még a Marveen working tree
+  stash-elése vagy verzióváltása előtt lefut;
 - Marveen 1.25.1 tiszta Node 22 telepítés, typecheck, syntax check és build;
 - párosítás kizárólag a publikus Federation API-n, letiltott állapotban;
 - korábbi megszakított cutover peerje csak a privát állapot és token-ujjlenyomatok
   pontos egyezésekor folytatható;
-- legacy Bridge leállítása előtt az új runtime minden előfeltételének ellenőrzése;
+- a legacy Bridge rövid leállítása után, de bármilyen Marveen-módosítás előtt
+  az új runtime valódi systemd-környezetben bizonyítja a readiness állapotát;
 - `advisory` alapértelmezett routing, majd pontosan-egyszeri élő canary;
 - hiba esetén először Federation-disable, majd az aktuális kísérletben létrehozott
   peer eltávolítása, az eredeti `dist`, `node_modules`, Marveen-forrás,
