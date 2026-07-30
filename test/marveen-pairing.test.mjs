@@ -17,6 +17,7 @@ import {
   PairingError,
   rollbackMarveenPairing,
   stageMarveenPairing,
+  summarizeMarveenPairing,
 } from '../src/marveen-pairing.mjs'
 
 const servers = []
@@ -187,6 +188,12 @@ test('a matching disabled peer is safely resumed after a failed cutover', async 
   })
   assert.equal(resumed.status, 'already-paired-disabled')
   assert.equal(resumed.createdNow, false)
+  assert.deepEqual(summarizeMarveenPairing(resumed), {
+    status: 'already-paired-disabled',
+    createdNow: false,
+    peerId: 'codex',
+    marveenSystemId: 'bela',
+  })
   assert.equal(mock.calls.filter((call) => call.method === 'POST').length, 1)
   assert.equal(mock.peers.length, 1)
 })
