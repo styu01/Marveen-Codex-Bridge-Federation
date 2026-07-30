@@ -250,7 +250,7 @@ test('standalone dashboard is static, hardened and admin API remains authenticat
     { token: ADMIN_TOKEN },
   )
   assert.equal(summary.status, 200)
-  assert.equal(summary.body.data.bridgeVersion, '0.3.0-phase6.3.0')
+  assert.equal(summary.body.data.bridgeVersion, '0.3.0-phase7.7.0')
   assert.equal(summary.body.data.readiness.ready, true)
   assert.equal(summary.body.data.agents[0].id, 'programozo')
 
