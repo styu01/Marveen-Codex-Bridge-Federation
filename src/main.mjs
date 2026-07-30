@@ -21,13 +21,16 @@ const config = loadServiceConfig(configPath)
 const runtime = await loadRuntimeModule(runtimeModule, {
   config,
   environment: process.env,
+  onEvent(event, fields = {}) {
+    log(event === 'app_server_stderr' ? 'warn' : 'info', event, fields)
+  },
 })
 
 const service = new FederationBridgeService({ config, runtime })
 if (typeof runtime.start === 'function') await runtime.start()
 const endpoint = await service.start()
 log('info', 'service_started', {
-  bridgeVersion: '0.3.0-phase6.3.0',
+  bridgeVersion: '0.3.0-phase7.11.0',
   host: endpoint.host,
   port: endpoint.port,
   systemId: config.systemId,
