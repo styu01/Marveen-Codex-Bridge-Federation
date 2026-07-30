@@ -48,7 +48,7 @@ RESULT: PHASE 5.2 REAL IMAGEGEN AND ARTIFACT PASS
 RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION, IMAGEGEN AND DASHBOARD PASS
 ```
 
-## Phase 7.6 rollback-hardening
+## Phase 7.11 dependency, systemd és Federation peer-identitás kapu
 
 Dátum: 2026-07-30
 
@@ -57,14 +57,33 @@ Dátum: 2026-07-30
   PASS;
 - megszakadt párosítás privát állapot- és token-ujjlenyomat alapú folytatása:
   PASS;
+- a folytatott pairing kompakt eredményében a Marveen `systemId` megőrzése és
+  a peer-reconciliation általi feldolgozása: PASS;
+- föderált canary regresszió: az eredeti sor `delivered` marad, a válasz külön
+  sorban érkezik, és ez pontosan egyszer sikeresnek minősül: PASS;
 - ismeretlen vagy eltérő peer fail-closed: PASS;
 - aktuális kísérletben létrehozott peer ellenőrzött rollbackje: PASS;
 - régi és candidate `dist` atomikus megőrzési szerződése: PASS;
 - legacy Bridge automatikus visszaindítási és readiness-szerződése: PASS;
 - Phase 7.5 hybrid-dist célzott helyreállító preflight/execute szerződése:
   PASS;
-- célzott új és módosított tesztek: 17/17 PASS.
+- `ProtectHome=read-only` mellett kizárólag a nem symlink `CODEX_HOME`
+  írhatósági kivétele: PASS;
+- hitelesítőadat-mintákat maszkoló és méretkorlátos Codex stderr: PASS;
+- váratlan App Server-kilépés diagnosztikai stderr-tailje: PASS;
+- runtime `onEvent` naplózási lánc: PASS;
+- valódi systemd readiness próba a Marveen stash/switch előtt: PASS;
+- Marveen-módosítás előtti hiba esetén Federation API hívása nélküli legacy
+  Bridge-visszaállítási szerződés: PASS;
+- a Marveen publikus API-ból származó `systemId` és a hitelesített Bridge-peer
+  atomikus egyeztetése: PASS;
+- új immutable release production függőségeinek kötelező, Node 22-es staging
+  telepítése a systemd-próba előtt: PASS;
+- a `bela/bela` canary a régi `marveen` peerrel reprodukálhatóan 403, az
+  egyeztetett `bela` peerrel 202: PASS;
+- peer-konfiguráció visszaállítása sikertelen cutover esetén: PASS;
+- célzott új és módosított tesztek: 14/14 PASS.
 
-A teljes 109/109 tesztet a kiadási csomagból, Node 22.23.1 és az ahhoz
+A teljes 117/117 tesztet a kiadási csomagból, Node 22.23.1 és az ahhoz
 fordított production `better-sqlite3` modul alatt kell lefuttatni. Új éles
 `--execute` cutover addig nem engedélyezett.
