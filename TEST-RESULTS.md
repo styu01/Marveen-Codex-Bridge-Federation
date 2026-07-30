@@ -48,7 +48,7 @@ RESULT: PHASE 5.2 REAL IMAGEGEN AND ARTIFACT PASS
 RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION, IMAGEGEN AND DASHBOARD PASS
 ```
 
-## Phase 7.6 rollback-hardening
+## Phase 7.7 systemd pre-mutation gate
 
 Dátum: 2026-07-30
 
@@ -63,8 +63,16 @@ Dátum: 2026-07-30
 - legacy Bridge automatikus visszaindítási és readiness-szerződése: PASS;
 - Phase 7.5 hybrid-dist célzott helyreállító preflight/execute szerződése:
   PASS;
-- célzott új és módosított tesztek: 17/17 PASS.
+- `ProtectHome=read-only` mellett kizárólag a nem symlink `CODEX_HOME`
+  írhatósági kivétele: PASS;
+- hitelesítőadat-mintákat maszkoló és méretkorlátos Codex stderr: PASS;
+- váratlan App Server-kilépés diagnosztikai stderr-tailje: PASS;
+- runtime `onEvent` naplózási lánc: PASS;
+- valódi systemd readiness próba a Marveen stash/switch előtt: PASS;
+- Marveen-módosítás előtti hiba esetén Federation API hívása nélküli legacy
+  Bridge-visszaállítási szerződés: PASS;
+- célzott új és módosított tesztek: 13/13 PASS.
 
-A teljes 109/109 tesztet a kiadási csomagból, Node 22.23.1 és az ahhoz
+A teljes 113/113 tesztet a kiadási csomagból, Node 22.23.1 és az ahhoz
 fordított production `better-sqlite3` modul alatt kell lefuttatni. Új éles
 `--execute` cutover addig nem engedélyezett.
