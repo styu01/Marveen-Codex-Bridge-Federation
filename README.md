@@ -1,13 +1,13 @@
-# Marveen Codex Bridge 0.3.0 – Phase 7.6
+# Marveen Codex Bridge 0.3.0 – Phase 7.11
 
 Önálló Federation Bridge valódi Codex App Server runtime-mal, a Marveen
 forráskódjának módosítása nélkül.
 
-> **Fejlesztési állapot:** a 0.3.0 Phase 7.6 kiadás előzetes, kontrollált
+> **Fejlesztési állapot:** a 0.3.0 Phase 7.11 kiadás előzetes, kontrollált
 > telepítésre és validációra készült. Éles átállás előtt kötelező a dokumentált
 > preflight, mentés és rollback-útvonal ellenőrzése.
 
-A Phase 7.6 a Marveen 1.25.1-re épített migrációs checkpointot, a Phase 0
+A Phase 7.11 a Marveen 1.25.1-re épített migrációs checkpointot, a Phase 0
 mentést és a Phase 6.3 önálló Bridge-et egy tranzakciós éles átállásban köti
 össze. A Marveen forrását nem patch-eli: a kapcsolat kizárólag a publikus
 Federation API-n történik.
@@ -26,11 +26,32 @@ Federation API-n történik.
   modul nem maradhat vissza a kimenetben;
 - az új service kizárólag az immutable release-könyvtárból indul; a `current`
   symlink csak release-pointer, nem runtime-modulútvonal;
+- `ProtectHome=read-only` mellett kizárólag az ellenőrzött, nem symlink
+  `CODEX_HOME` (alapból `~/.codex`) kap írási jogot az App Server
+  hitelesített runtime-állapotához;
+- a Codex stderr hitelesítőadat-mintái maszkolva, sorai korlátozva és a
+  váratlan kilépés diagnosztikai tailjében megőrizve jelennek meg;
+- a valódi systemd-sandbox és readiness próba még a Marveen working tree
+  stash-elése vagy verzióváltása előtt lefut;
+- az új immutable Bridge release production függőségei rögzített Node 22
+  környezetben, atomikus stagingben települnek; a cutover nem hagyatkozik
+  korábbi vagy kézzel javított `node_modules` könyvtárra;
 - Marveen 1.25.1 tiszta Node 22 telepítés, typecheck, syntax check és build;
 - párosítás kizárólag a publikus Federation API-n, letiltott állapotban;
+- a Bridge nem feltételezi, hogy a Marveen Federation rendszerazonosítója
+  `marveen`: a publikus API által közölt `systemId` értéket ellenőrzi, majd
+  atomikusan ehhez köti a peer- és agentazonosítást még az aktiválás előtt;
+- a friss és a korábban létrehozott, biztonságosan folytatott pairing eredménye
+  egyaránt kötelezően továbbadja a Marveen rendszerazonosítóját;
+- a peer-identitás módosítása után az új Bridge-et letiltott Federation mellett
+  újraindítja és readiness-próbával ellenőrzi; hiba esetén az eredeti privát
+  konfigurációt is visszaállítja;
 - korábbi megszakított cutover peerje csak a privát állapot és token-ujjlenyomatok
   pontos egyezésekor folytatható;
-- legacy Bridge leállítása előtt az új runtime minden előfeltételének ellenőrzése;
+- az éles Federation canary a föderált kimenő sor tényleges terminális
+  `delivered` állapotát és pontosan egy külön marker-választ követel meg;
+- a legacy Bridge rövid leállítása után, de bármilyen Marveen-módosítás előtt
+  az új runtime valódi systemd-környezetben bizonyítja a readiness állapotát;
 - `advisory` alapértelmezett routing, majd pontosan-egyszeri élő canary;
 - hiba esetén először Federation-disable, majd az aktuális kísérletben létrehozott
   peer eltávolítása, az eredeti `dist`, `node_modules`, Marveen-forrás,
@@ -171,21 +192,23 @@ ismétlése idempotens; az ellentétes második döntés `409`.
 cd ~/bela-codex-preflight
 
 sha256sum -c \
-  Marveen-Codex-Bridge-v0.3.0-Phase6.3.tar.gz.sha256
+  Marveen-Codex-Bridge-v0.3.0-Phase7.11.tar.gz.sha256
 
 tar -xzf \
-  Marveen-Codex-Bridge-v0.3.0-Phase6.3.tar.gz
+  Marveen-Codex-Bridge-v0.3.0-Phase7.11.tar.gz
 
-cd marveen-codex-bridge-0.3.0-phase6.3
+cd marveen-codex-bridge-0.3.0-phase7.11
 
-./scripts/verify-phase6.sh \
+./scripts/verify-phase7.sh \
   --node-bin "$HOME/.nvm/versions/node/v22.23.1/bin/node" \
-  --codex-bin "$HOME/.local/bin/codex"
+  --codex-bin "$HOME/.local/bin/codex" \
+  --clean-marveen-root \
+    "$HOME/bela-codex-preflight/marveen-upgrade-v1.25.1"
 ```
 
 A verifier:
 
-1. 98 mock, adatbázis-, dashboard-, telepítő-, párosítási, git-karantén-,
+1. 117 mock, adatbázis-, dashboard-, telepítő-, párosítási, git-karantén-,
    artifact-biztonsági és integrációs tesztet futtat;
 2. megismétli a Phase 4 valódi read-only handshake/thread-restart kaput;
 3. egy privát, eldobható könyvtárban valódi approve és decline döntést tesztel;
@@ -198,8 +221,8 @@ A verifier:
 Elvárt zárás:
 
 ```text
-tests 98
-pass 98
+tests 117
+pass 117
 fail 0
 skipped 0
 RESULT: PHASE 4 REAL CODEX PREFLIGHT PASS
@@ -211,7 +234,7 @@ RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION, IMAGEGEN AND DASHBOARD PASS
 Csak csomagteszthez:
 
 ```bash
-./scripts/verify-phase6.sh \
+./scripts/verify-phase7.sh \
   --node-bin "$HOME/.nvm/versions/node/v22.23.1/bin/node" \
   --mock-only
 ```
@@ -244,11 +267,11 @@ A csomag külön dokumentálja és teszteli:
 
 Részletek: [`docs/phase6.2-clean-pairing.md`](docs/phase6.2-clean-pairing.md).
 
-## Amit ez a fázis még nem hajt végre
+## Amit a verifikáció önmagában nem hajt végre
 
 - Marveen memóriaelérés: nincs hozzá Federation v1 publikus szerződés;
-- üzemi cutover;
-- Federation bekapcsolása és főagent-újraindítás;
+- üzemi cutover az explicit `cutover-phase7.sh --execute` nélkül;
+- Federation bekapcsolása az explicit cutover nélkül;
 - a régi Bridge végleges törlése.
 
 Ezeket nem szabad Marveen belső adatbázisának vagy privát API-jának
