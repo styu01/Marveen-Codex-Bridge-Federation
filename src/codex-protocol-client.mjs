@@ -3,6 +3,28 @@ import { EventEmitter } from 'node:events'
 import readline from 'node:readline'
 
 const MAX_PROTOCOL_LINE_BYTES = 8 * 1024 * 1024
+const MAX_STDERR_LINE_CHARS = 2_048
+const MAX_STDERR_TAIL_LINES = 8
+
+export function sanitizeCodexStderr(value) {
+  let line = String(value ?? '')
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
+    .replace(/\b(Bearer|Basic)\s+[^\s"',;]+/gi, '$1 [REDACTED]')
+    .replace(
+      /\b([A-Z][A-Z0-9_]*(?:TOKEN|API_KEY|SECRET|PASSWORD))=([^\s"',;]+)/g,
+      '$1=[REDACTED]',
+    )
+    .replace(
+      /("(?:access_token|refresh_token|id_token|api_key|authorization|token)"\s*:\s*")[^"]*(")/gi,
+      '$1[REDACTED]$2',
+    )
+    .replace(/([?&](?:access_token|token|api_key)=)[^&\s]+/gi, '$1[REDACTED]')
+    .replace(/(https?:\/\/)[^/\s:@]+:[^/\s@]+@/gi, '$1[REDACTED]@')
+  if (line.length > MAX_STDERR_LINE_CHARS) {
+    line = `${line.slice(0, MAX_STDERR_LINE_CHARS)}…[TRUNCATED]`
+  }
+  return line
+}
 
 export class CodexProtocolError extends Error {
   constructor(code, message, details = {}) {
@@ -36,6 +58,7 @@ export class CodexProtocolClient extends EventEmitter {
     this.nextId = 1
     this.stopping = false
     this.protocolErrorCount = 0
+    this.stderrTail = []
   }
 
   get running() {
@@ -49,33 +72,50 @@ export class CodexProtocolClient extends EventEmitter {
   async start() {
     if (this.child) return
     this.stopping = false
+    this.stderrTail = []
     const child = spawn(this.binary, ['app-server', '--stdio'], {
       cwd: this.cwd,
       env: this.environment,
       stdio: ['pipe', 'pipe', 'pipe'],
     })
     this.child = child
-    child.once('error', (error) => this.handleExit(error))
-    child.once('exit', (code, signal) => {
+    let exitHandled = false
+    child.once('error', (error) => {
+      if (exitHandled) return
+      exitHandled = true
+      this.handleExit(error)
+    })
+    child.once('close', (code, signal) => {
+      if (exitHandled) return
+      exitHandled = true
       if (this.child === child) this.child = null
       if (!this.stopping) {
+        const stderrTail = this.stderrTail.join('\n')
+        const suffix = stderrTail ? `; stderr=${stderrTail}` : ''
         this.handleExit(new CodexProtocolError(
           'app_server_exit',
-          `Codex App Server exited unexpectedly: code=${code}, signal=${signal}`,
+          `Codex App Server exited unexpectedly: code=${code}, signal=${signal}${suffix}`,
+          { code, signal, stderrTail: [...this.stderrTail] },
         ))
       }
     })
     const stdout = readline.createInterface({ input: child.stdout, crlfDelay: Infinity })
     stdout.on('line', (line) => void this.handleLine(line))
     const stderr = readline.createInterface({ input: child.stderr, crlfDelay: Infinity })
-    stderr.on('line', (line) => this.onStderr(line))
+    stderr.on('line', (line) => {
+      const safeLine = sanitizeCodexStderr(line)
+      if (!safeLine) return
+      this.stderrTail.push(safeLine)
+      if (this.stderrTail.length > MAX_STDERR_TAIL_LINES) this.stderrTail.shift()
+      this.onStderr(safeLine)
+    })
 
     try {
       await this.request('initialize', {
         clientInfo: {
           name: 'marveen_codex_bridge_federation',
           title: 'Marveen Codex Bridge Federation',
-          version: '0.3.0-phase6.3.0',
+          version: '0.3.0-phase7.11.0',
         },
         capabilities: {
           experimentalApi: true,
