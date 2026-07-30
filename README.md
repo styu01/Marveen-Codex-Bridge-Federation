@@ -1,13 +1,13 @@
-# Marveen Codex Bridge 0.3.0 – Phase 7.5
+# Marveen Codex Bridge 0.3.0 – Phase 7.6
 
 Önálló Federation Bridge valódi Codex App Server runtime-mal, a Marveen
 forráskódjának módosítása nélkül.
 
-> **Fejlesztési állapot:** a 0.3.0 Phase 7.5 kiadás előzetes, kontrollált
+> **Fejlesztési állapot:** a 0.3.0 Phase 7.6 kiadás előzetes, kontrollált
 > telepítésre és validációra készült. Éles átállás előtt kötelező a dokumentált
 > preflight, mentés és rollback-útvonal ellenőrzése.
 
-A Phase 7.5 a Marveen 1.25.1-re épített migrációs checkpointot, a Phase 0
+A Phase 7.6 a Marveen 1.25.1-re épített migrációs checkpointot, a Phase 0
 mentést és a Phase 6.3 önálló Bridge-et egy tranzakciós éles átállásban köti
 össze. A Marveen forrását nem patch-eli: a kapcsolat kizárólag a publikus
 Federation API-n történik.
@@ -22,12 +22,19 @@ Federation API-n történik.
   felismerése; minden más bizonytalan route/verzió kombináció blokkolja az átállást;
 - a teljes régi Marveen working tree privát, azonosított stash-checkpointja;
 - a régi `node_modules` atomikus megőrzése rollbackhez;
+- a régi `dist` atomikus megőrzése és a candidate tiszta buildje, így eltávolított
+  modul nem maradhat vissza a kimenetben;
+- az új service kizárólag az immutable release-könyvtárból indul; a `current`
+  symlink csak release-pointer, nem runtime-modulútvonal;
 - Marveen 1.25.1 tiszta Node 22 telepítés, typecheck, syntax check és build;
 - párosítás kizárólag a publikus Federation API-n, letiltott állapotban;
+- korábbi megszakított cutover peerje csak a privát állapot és token-ujjlenyomatok
+  pontos egyezésekor folytatható;
 - legacy Bridge leállítása előtt az új runtime minden előfeltételének ellenőrzése;
 - `advisory` alapértelmezett routing, majd pontosan-egyszeri élő canary;
-- hiba esetén először Federation-disable, utána automatikus Claude-only
-  Marveen-visszaállítás;
+- hiba esetén először Federation-disable, majd az aktuális kísérletben létrehozott
+  peer eltávolítása, az eredeti `dist`, `node_modules`, Marveen-forrás,
+  dashboard és legacy Bridge ellenőrzött visszaállítása;
 - a Phase 0 mentés és a legacy adapter karantén változatlanul megmarad.
 
 A részletes sorrend és rollback-szerződés:
@@ -54,7 +61,7 @@ Ez még nem állít le és nem indít újra szolgáltatást.
 ./scripts/cutover-phase7.sh \
   --marveen-root "$HOME/marveen" \
   --phase0-root "$HOME/bela-codex-preflight/phase0-freeze-20260729-093309" \
-  --candidate-commit 0f27575d2e8ad1c239192e32d56ff623d2b404cb \
+  --candidate-commit 27ff7f8f18c1fc33e46dc53655977787203916c8 \
   --bundle "$HOME/bela-codex-preflight/marveen-v1.25.1-local-candidate-1.bundle" \
   --node-bin "$HOME/.nvm/versions/node/v22.23.1/bin/node" \
   --codex-bin "$HOME/.local/bin/codex"

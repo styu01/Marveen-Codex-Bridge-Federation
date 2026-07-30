@@ -129,6 +129,62 @@ function digest(value) {
   return createHash('sha256').update(value).digest('hex')
 }
 
+function readPairingState(path) {
+  let stat
+  try {
+    stat = lstatSync(path)
+  } catch {
+    throw new PairingError(
+      'Existing Marveen peer has no private pairing state; explicit reconciliation is required',
+      { code: 'pairing_state_missing' },
+    )
+  }
+  if (stat.isSymbolicLink() || !stat.isFile() || (stat.mode & 0o077) !== 0) {
+    throw new PairingError('Private pairing state is unsafe', {
+      code: 'unsafe_pairing_state',
+    })
+  }
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'))
+  } catch {
+    throw new PairingError('Private pairing state is invalid', {
+      code: 'invalid_pairing_state',
+    })
+  }
+}
+
+function assertExistingPairMatches({
+  peer,
+  state,
+  peerId,
+  origin,
+  bridgeOrigin,
+  marveenSystemId,
+  bridgeInboundToken,
+  bridgeOutboundToken,
+}) {
+  const valid = (
+    state?.version === 1
+    && state?.peerCreatedByPhase62 === true
+    && state?.peerId === peerId
+    && state?.marveenOrigin === origin
+    && state?.bridgeOrigin === bridgeOrigin
+    && state?.marveenSystemId === marveenSystemId
+    && state?.bridgeInboundTokenSha256 === digest(bridgeInboundToken)
+    && state?.bridgeOutboundTokenSha256 === digest(bridgeOutboundToken)
+    && peer?.id === peerId
+    && peer?.baseUrl === bridgeOrigin
+    && peer?.hasInboundToken === true
+    && peer?.hasOutboundToken === true
+  )
+  if (!valid) {
+    throw new PairingError(
+      `Existing Marveen peer '${peerId}' does not match the private pairing state`,
+      { code: 'pairing_state_mismatch' },
+    )
+  }
+}
+
 export async function stageMarveenPairing({
   marveenOrigin,
   dashboardTokenFile,
@@ -163,11 +219,11 @@ export async function stageMarveenPairing({
       { code: 'federation_already_enabled' },
     )
   }
-  if (current.peers.some((peer) => peer?.id === peerId)) {
-    throw new PairingError(
-      `Marveen peer '${peerId}' already exists; explicit reconciliation is required`,
-      { code: 'peer_exists' },
-    )
+  const matchingPeers = current.peers.filter((peer) => peer?.id === peerId)
+  if (matchingPeers.length > 1) {
+    throw new PairingError(`Duplicate Marveen peers exist for '${peerId}'`, {
+      code: 'duplicate_peer',
+    })
   }
 
   const plan = {
@@ -177,6 +233,29 @@ export async function stageMarveenPairing({
     marveenSystemId: String(current.systemId ?? ''),
     existingPeerCount: current.peers.length,
     execute,
+  }
+  if (matchingPeers.length === 1) {
+    const state = readPairingState(stateFile)
+    const bridgeOutboundToken = readPrivateToken(
+      bridgeOutboundTokenFile,
+      'Bridge outbound token',
+    )
+    assertExistingPairMatches({
+      peer: matchingPeers[0],
+      state,
+      peerId,
+      origin,
+      bridgeOrigin: normalizedBridgeOrigin,
+      marveenSystemId: String(current.systemId ?? ''),
+      bridgeInboundToken,
+      bridgeOutboundToken,
+    })
+    return {
+      status: execute ? 'already-paired-disabled' : 'reconciled-preflight',
+      plan,
+      state,
+      createdNow: false,
+    }
   }
   if (!execute) return { status: 'preflight', plan }
 
@@ -244,7 +323,12 @@ export async function stageMarveenPairing({
       federationEnabled: false,
     }
     atomicPrivateWrite(stateFile, `${JSON.stringify(state, null, 2)}\n`)
-    return { status: 'paired-disabled', plan, state }
+    return {
+      status: 'paired-disabled',
+      plan,
+      state,
+      createdNow: true,
+    }
   } catch (error) {
     if (peerCreated) {
       try {
@@ -264,4 +348,78 @@ export async function stageMarveenPairing({
     }
     throw error
   }
+}
+
+export async function rollbackMarveenPairing({
+  marveenOrigin,
+  dashboardTokenFile,
+  bridgeInboundTokenFile,
+  bridgeOutboundTokenFile,
+  stateFile,
+  peerId = 'codex',
+  bridgeOrigin = 'http://127.0.0.1:3431',
+  fetchImpl = fetch,
+}) {
+  const origin = assertLoopbackOrigin(marveenOrigin)
+  const normalizedBridgeOrigin = assertLoopbackOrigin(bridgeOrigin)
+  const dashboardToken = readPrivateToken(
+    dashboardTokenFile,
+    'Marveen dashboard token',
+  )
+  const bridgeInboundToken = readPrivateToken(
+    bridgeInboundTokenFile,
+    'Bridge inbound token',
+  )
+  const bridgeOutboundToken = readPrivateToken(
+    bridgeOutboundTokenFile,
+    'Bridge outbound token',
+  )
+  const state = readPairingState(stateFile)
+  const current = await marveenRequest(
+    fetchImpl,
+    origin,
+    dashboardToken,
+    '/api/federation/peers',
+  )
+  if (current?.enabled === true) {
+    throw new PairingError('Federation must be disabled before pairing rollback', {
+      code: 'federation_enabled',
+    })
+  }
+  const matchingPeers = current?.peers?.filter((peer) => peer?.id === peerId)
+  if (!Array.isArray(matchingPeers) || matchingPeers.length !== 1) {
+    throw new PairingError('Pairing rollback requires exactly one matching peer', {
+      code: 'peer_inventory_mismatch',
+    })
+  }
+  assertExistingPairMatches({
+    peer: matchingPeers[0],
+    state,
+    peerId,
+    origin,
+    bridgeOrigin: normalizedBridgeOrigin,
+    marveenSystemId: String(current.systemId ?? ''),
+    bridgeInboundToken,
+    bridgeOutboundToken,
+  })
+  await marveenRequest(
+    fetchImpl,
+    origin,
+    dashboardToken,
+    `/api/federation/peers/${encodeURIComponent(peerId)}`,
+    { method: 'DELETE' },
+  )
+  const after = await marveenRequest(
+    fetchImpl,
+    origin,
+    dashboardToken,
+    '/api/federation/peers',
+  )
+  if (after?.peers?.some((peer) => peer?.id === peerId)) {
+    throw new PairingError('Marveen peer deletion did not persist', {
+      code: 'peer_delete_not_persisted',
+    })
+  }
+  unlinkSync(stateFile)
+  return { status: 'pairing-rolled-back', peerId }
 }

@@ -13,7 +13,11 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, test } from 'node:test'
-import { PairingError, stageMarveenPairing } from '../src/marveen-pairing.mjs'
+import {
+  PairingError,
+  rollbackMarveenPairing,
+  stageMarveenPairing,
+} from '../src/marveen-pairing.mjs'
 
 const servers = []
 afterEach(async () => {
@@ -130,7 +134,7 @@ test('execute pairs both directions but leaves Federation disabled', async (t) =
   assert.equal(JSON.parse(post.body).outboundToken, 'b'.repeat(64))
 })
 
-test('existing peer or enabled Federation fails closed without mutation', async (t) => {
+test('unowned existing peer or enabled Federation fails closed without mutation', async (t) => {
   const paths = fixture(t)
   const existing = await mockMarveen({ existing: [{ id: 'codex' }] })
   await assert.rejects(
@@ -142,7 +146,7 @@ test('existing peer or enabled Federation fails closed without mutation', async 
       stateFile: paths.state,
       execute: true,
     }),
-    (error) => error instanceof PairingError && error.code === 'peer_exists',
+    (error) => error instanceof PairingError && error.code === 'pairing_state_missing',
   )
   assert.equal(existing.calls.length, 1)
 
@@ -159,6 +163,84 @@ test('existing peer or enabled Federation fails closed without mutation', async 
     (error) => error instanceof PairingError && error.code === 'federation_already_enabled',
   )
   assert.equal(enabled.calls.length, 1)
+})
+
+test('a matching disabled peer is safely resumed after a failed cutover', async (t) => {
+  const paths = fixture(t)
+  const mock = await mockMarveen()
+  const first = await stageMarveenPairing({
+    marveenOrigin: mock.origin,
+    dashboardTokenFile: paths.dashboard,
+    bridgeInboundTokenFile: paths.inbound,
+    bridgeOutboundTokenFile: paths.outbound,
+    stateFile: paths.state,
+    execute: true,
+  })
+  assert.equal(first.createdNow, true)
+  const resumed = await stageMarveenPairing({
+    marveenOrigin: mock.origin,
+    dashboardTokenFile: paths.dashboard,
+    bridgeInboundTokenFile: paths.inbound,
+    bridgeOutboundTokenFile: paths.outbound,
+    stateFile: paths.state,
+    execute: true,
+  })
+  assert.equal(resumed.status, 'already-paired-disabled')
+  assert.equal(resumed.createdNow, false)
+  assert.equal(mock.calls.filter((call) => call.method === 'POST').length, 1)
+  assert.equal(mock.peers.length, 1)
+})
+
+test('rollback removes only a peer proven by the private pairing state', async (t) => {
+  const paths = fixture(t)
+  const mock = await mockMarveen()
+  await stageMarveenPairing({
+    marveenOrigin: mock.origin,
+    dashboardTokenFile: paths.dashboard,
+    bridgeInboundTokenFile: paths.inbound,
+    bridgeOutboundTokenFile: paths.outbound,
+    stateFile: paths.state,
+    execute: true,
+  })
+  const result = await rollbackMarveenPairing({
+    marveenOrigin: mock.origin,
+    dashboardTokenFile: paths.dashboard,
+    bridgeInboundTokenFile: paths.inbound,
+    bridgeOutboundTokenFile: paths.outbound,
+    stateFile: paths.state,
+  })
+  assert.equal(result.status, 'pairing-rolled-back')
+  assert.equal(mock.peers.length, 0)
+  assert.equal(existsSync(paths.state), false)
+  assert.equal(mock.calls.filter((call) => call.method === 'DELETE').length, 1)
+})
+
+test('rollback refuses a pairing state or peer mismatch', async (t) => {
+  const paths = fixture(t)
+  const mock = await mockMarveen()
+  await stageMarveenPairing({
+    marveenOrigin: mock.origin,
+    dashboardTokenFile: paths.dashboard,
+    bridgeInboundTokenFile: paths.inbound,
+    bridgeOutboundTokenFile: paths.outbound,
+    stateFile: paths.state,
+    execute: true,
+  })
+  const state = JSON.parse(readFileSync(paths.state, 'utf8'))
+  state.bridgeOrigin = 'http://127.0.0.1:3999'
+  writeFileSync(paths.state, `${JSON.stringify(state)}\n`, { mode: 0o600 })
+  await assert.rejects(
+    rollbackMarveenPairing({
+      marveenOrigin: mock.origin,
+      dashboardTokenFile: paths.dashboard,
+      bridgeInboundTokenFile: paths.inbound,
+      bridgeOutboundTokenFile: paths.outbound,
+      stateFile: paths.state,
+    }),
+    (error) => error instanceof PairingError && error.code === 'pairing_state_mismatch',
+  )
+  assert.equal(mock.peers.length, 1)
+  assert.equal(mock.calls.filter((call) => call.method === 'DELETE').length, 0)
 })
 
 test('invalid token returned by Marveen triggers peer rollback', async (t) => {

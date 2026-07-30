@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="0.3.0-phase7.5"
+VERSION="0.3.0-phase7.6"
 LEGACY_MARVEEN_VERSION="1.21.1"
 EXPECTED_MARVEEN_VERSION="1.25.1"
 SOURCE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -170,7 +170,9 @@ then
 elif [[ "${CURRENT_MARVEEN_VERSION}" == "${LEGACY_MARVEEN_VERSION}" ]] \
   && [[ ! -e "${MARVEEN_ROOT}/src/web/routes/federation.ts" ]] \
   && [[ ! -e "${MARVEEN_ROOT}/dist/web/routes/federation.js" ]] \
-  && [[ ! -e "${MARVEEN_ROOT}/dist/src/web/routes/federation.js" ]]
+  && [[ ! -e "${MARVEEN_ROOT}/dist/src/web/routes/federation.js" ]] \
+  && [[ ! -e "${MARVEEN_ROOT}/dist/providers/codex-provider.js" ]] \
+  && [[ ! -e "${MARVEEN_ROOT}/dist/src/providers/codex-provider.js" ]]
 then
   pass "legacy Marveen ${LEGACY_MARVEEN_VERSION} has no Federation route and is implicitly disabled"
 else
@@ -229,9 +231,15 @@ OLD_BRANCH="$(git -C "${MARVEEN_ROOT}" symbolic-ref --quiet --short HEAD)" \
 NEW_BRANCH="local/marveen-v${EXPECTED_MARVEEN_VERSION}-production-${STAMP}"
 OLD_NODE_MODULES="${RECORD}/node_modules-before-cutover"
 NEW_NODE_MODULES="${RECORD}/node_modules-failed-candidate"
+OLD_DIST="${RECORD}/dist-before-cutover"
+NEW_DIST="${RECORD}/dist-failed-candidate"
+PAIRING_RESULT="${RECORD}/pairing-result.json"
 STASH_COMMIT=""
 MARVEEN_SWITCHED=0
 NODE_MODULES_MOVED=0
+DIST_MOVED=0
+PAIRING_CREATED=0
+LEGACY_STOPPED=0
 FEDERATION_ENABLED=0
 CUTOVER_OK=0
 
@@ -252,32 +260,87 @@ chmod 0600 "${RECORD}/status-before.z"
 
 rollback() {
   local exit_code=$?
+  local rollback_failed=0
   trap - ERR INT TERM
   [[ "${CUTOVER_OK}" -eq 0 ]] || return 0
   set +e
   echo "ROLLBACK: disabling Federation first" >&2
   "${NODE_REAL}" "${SOURCE_ROOT}/scripts/federation-cutover-api.mjs" \
-    disable --token-file "${DASHBOARD_TOKEN}" >/dev/null 2>&1
+    disable --token-file "${DASHBOARD_TOKEN}" >/dev/null 2>&1 \
+    || rollback_failed=1
+  if [[ "${PAIRING_CREATED}" -eq 1 ]]; then
+    "${NODE_REAL}" "${SOURCE_ROOT}/scripts/pair-marveen-phase6.2.mjs" \
+      --dashboard-token-file "${DASHBOARD_TOKEN}" \
+      --rollback >/dev/null 2>&1 \
+      || rollback_failed=1
+  fi
   systemctl --user disable --now marveen-codex-bridge.service >/dev/null 2>&1
   if [[ "${MARVEEN_SWITCHED}" -eq 1 ]]; then
     systemctl --user stop bela-dashboard.service >/dev/null 2>&1
-    if [[ -d "${MARVEEN_ROOT}/node_modules" && "${NODE_MODULES_MOVED}" -eq 1 ]]; then
-      mv -- "${MARVEEN_ROOT}/node_modules" "${NEW_NODE_MODULES}"
+    if [[ -d "${MARVEEN_ROOT}/dist" && "${DIST_MOVED}" -eq 1 ]]; then
+      mv -- "${MARVEEN_ROOT}/dist" "${NEW_DIST}" \
+        || rollback_failed=1
     fi
-    git -C "${MARVEEN_ROOT}" switch "${OLD_BRANCH}" >/dev/null 2>&1
+    if [[ -d "${MARVEEN_ROOT}/node_modules" && "${NODE_MODULES_MOVED}" -eq 1 ]]; then
+      mv -- "${MARVEEN_ROOT}/node_modules" "${NEW_NODE_MODULES}" \
+        || rollback_failed=1
+    fi
+    git -C "${MARVEEN_ROOT}" switch "${OLD_BRANCH}" >/dev/null 2>&1 \
+      || rollback_failed=1
     if [[ -n "${STASH_COMMIT}" ]]; then
-      git -C "${MARVEEN_ROOT}" stash apply "${STASH_COMMIT}" >/dev/null 2>&1
+      git -C "${MARVEEN_ROOT}" stash apply "${STASH_COMMIT}" >/dev/null 2>&1 \
+        || rollback_failed=1
     fi
     if [[ "${NODE_MODULES_MOVED}" -eq 1 && -d "${OLD_NODE_MODULES}" ]]; then
-      mv -- "${OLD_NODE_MODULES}" "${MARVEEN_ROOT}/node_modules"
+      mv -- "${OLD_NODE_MODULES}" "${MARVEEN_ROOT}/node_modules" \
+        || rollback_failed=1
     fi
-    systemctl --user restart bela-dashboard.service >/dev/null 2>&1
+    if [[ "${DIST_MOVED}" -eq 1 && -d "${OLD_DIST}" ]]; then
+      mv -- "${OLD_DIST}" "${MARVEEN_ROOT}/dist" \
+        || rollback_failed=1
+    fi
+    systemctl --user restart bela-dashboard.service >/dev/null 2>&1 \
+      || rollback_failed=1
+    local dashboard_restored=0
+    for _ in {1..45}; do
+      if curl --silent --fail \
+        -H "Authorization: Bearer $(<"${DASHBOARD_TOKEN}")" \
+        http://127.0.0.1:3420/api/agents >/dev/null 2>&1
+      then
+        dashboard_restored=1
+        break
+      fi
+      sleep 2
+    done
+    [[ "${dashboard_restored}" -eq 1 ]] || rollback_failed=1
+  fi
+  if [[ "${LEGACY_STOPPED}" -eq 1 ]]; then
+    systemctl --user enable --now bela-codex-bridge.service >/dev/null 2>&1 \
+      || rollback_failed=1
+    local legacy_restored=0
+    for _ in {1..45}; do
+      if curl --silent --fail \
+        --unix-socket "${LEGACY_SOCKET}" \
+        http://localhost/readyz 2>/dev/null \
+        | grep -q '"status":"ready"'
+      then
+        legacy_restored=1
+        break
+      fi
+      sleep 2
+    done
+    [[ "${legacy_restored}" -eq 1 ]] || rollback_failed=1
   fi
   {
     printf 'rolled_back_at=%s\n' "$(date -u +%FT%TZ)"
     printf 'trigger_exit_code=%s\n' "${exit_code}"
+    printf 'rollback_verified=%s\n' "$((rollback_failed == 0 ? 1 : 0))"
   } >> "${RECORD}/state.env"
-  echo "RESULT: CUTOVER FAILED; FEDERATION DISABLED AND MARVEEN ROLLBACK ATTEMPTED" >&2
+  if [[ "${rollback_failed}" -eq 0 ]]; then
+    echo "RESULT: CUTOVER FAILED; PRE-CUTOVER SERVICES AND MARVEEN FILES RESTORED" >&2
+  else
+    echo "RESULT: CUTOVER FAILED; ROLLBACK REQUIRES MANUAL RECOVERY" >&2
+  fi
   echo "Recovery record: ${RECORD}" >&2
   exit "${exit_code}"
 }
@@ -308,12 +371,24 @@ NPM_CLI="$(readlink -f -- "$(dirname -- "${NODE_REAL}")/../lib/node_modules/npm/
     "${NODE_REAL}" "${NPM_CLI}" run typecheck
   "${NODE_REAL}" --check web/app.js
   "${NODE_REAL}" --check web/sw.js
+)
+pass "Marveen dependencies, typecheck and syntax passed under Node 22"
+
+systemctl --user stop bela-dashboard.service
+[[ -d "${MARVEEN_ROOT}/dist" ]] \
+  || fail "pre-cutover Marveen dist directory is missing"
+mv -- "${MARVEEN_ROOT}/dist" "${OLD_DIST}"
+DIST_MOVED=1
+(
+  cd "${MARVEEN_ROOT}"
   PATH="$(dirname -- "${NODE_REAL}"):/usr/local/bin:/usr/bin:/bin" \
     "${NODE_REAL}" "${NPM_CLI}" run build
 )
-pass "Marveen dependencies, typecheck, syntax and build passed under Node 22"
+[[ -d "${MARVEEN_ROOT}/dist" ]] \
+  || fail "candidate Marveen build did not create dist"
+pass "Marveen candidate was built into a clean dist directory"
 
-systemctl --user restart bela-dashboard.service
+systemctl --user start bela-dashboard.service
 for _ in {1..45}; do
   if curl --silent --fail \
     -H "Authorization: Bearer $(<"${DASHBOARD_TOKEN}")" \
@@ -330,12 +405,19 @@ pass "Marveen ${EXPECTED_MARVEEN_VERSION} dashboard is healthy; Federation remai
 
 "${NODE_REAL}" "${SOURCE_ROOT}/scripts/pair-marveen-phase6.2.mjs" \
   --dashboard-token-file "${DASHBOARD_TOKEN}" \
+  --result-file "${PAIRING_RESULT}" \
   --execute
+PAIRING_CREATED="$(
+  "${NODE_REAL}" -p \
+    "JSON.parse(require('fs').readFileSync(process.argv[1])).createdNow ? 1 : 0" \
+    "${PAIRING_RESULT}"
+)"
 "${NODE_REAL}" "${SOURCE_ROOT}/scripts/federation-cutover-api.mjs" \
   preflight-paired --token-file "${DASHBOARD_TOKEN}" >/dev/null
 pass "standalone Bridge peer is paired while Federation is disabled"
 
 systemctl --user disable --now bela-codex-bridge.service
+LEGACY_STOPPED=1
 "${SOURCE_ROOT}/scripts/install-phase7.sh" \
   --node-bin "${NODE_REAL}" \
   --codex-bin "${CODEX_REAL}" \

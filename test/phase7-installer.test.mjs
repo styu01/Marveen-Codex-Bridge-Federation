@@ -75,22 +75,36 @@ exec /usr/bin/id "$@"
   const data = join(home, '.local/share/marveen-codex-bridge')
   const candidate = join(data, 'candidate')
   assert.equal(lstatSync(candidate).isSymbolicLink(), true)
-  assert.match(readlinkSync(candidate), /0\.3\.0-phase7\.5$/)
+  assert.match(readlinkSync(candidate), /0\.3\.0-phase7\.6$/)
   assert.equal(existsSync(join(data, 'current')), false)
   assert.equal(
     JSON.parse(readFileSync(join(
       data,
-      'releases/0.3.0-phase7.5/package.json',
+      'releases/0.3.0-phase7.6/package.json',
     ))).version,
-    '0.3.0-phase7.5',
+    '0.3.0-phase7.6',
   )
   const configRoot = join(home, '.config/marveen-codex-bridge')
   assert.equal(lstatSync(join(configRoot, 'config.json')).mode & 0o777, 0o600)
   assert.equal(lstatSync(join(configRoot, 'marveen-pairing.env')).mode & 0o777, 0o600)
-  assert.doesNotMatch(
-    readFileSync(join(home, '.config/systemd/user/marveen-codex-bridge.service'), 'utf8'),
-    /bela-codex-bridge/,
+  const unit = readFileSync(
+    join(home, '.config/systemd/user/marveen-codex-bridge.service'),
+    'utf8',
   )
+  assert.doesNotMatch(unit, /bela-codex-bridge/)
+  assert.match(
+    unit,
+    /releases\/0\.3\.0-phase7\.6\/src\/main\.mjs/,
+  )
+  assert.match(
+    unit,
+    /MARVEEN_CODEX_BRIDGE_RUNTIME_MODULE=.*releases\/0\.3\.0-phase7\.6\/src\/codex-runtime-module\.mjs/,
+  )
+  assert.match(
+    unit,
+    /MARVEEN_CODEX_BRIDGE_BETTER_SQLITE3_PATH=.*releases\/0\.3\.0-phase7\.6\/node_modules\/better-sqlite3/,
+  )
+  assert.doesNotMatch(unit, /marveen-codex-bridge\/current/)
 })
 
 test('Phase 7 dependency lifecycle PATH is pinned to the selected Node 22 bin', (t) => {

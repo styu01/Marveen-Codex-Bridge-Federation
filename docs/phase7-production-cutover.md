@@ -1,6 +1,6 @@
-# Phase 7.5 — controlled production cutover
+# Phase 7.6 — controlled production cutover
 
-Phase 7.5 activates the Federation Edition without applying a Codex adapter to
+Phase 7.6 activates the Federation Edition without applying a Codex adapter to
 the Marveen source tree.
 
 ## Safety order
@@ -10,8 +10,9 @@ the Marveen source tree.
 2. Verify the standalone Bridge candidate and absence of legacy approvals.
 3. Create a private cutover record and stash the complete Marveen working tree.
 4. Switch production Marveen to the already tested 1.25.1 candidate commit.
-5. Preserve the old `node_modules` directory by atomic rename, install clean
-   Node 22 dependencies, typecheck, syntax-check and build.
+5. Preserve the old `node_modules` and `dist` directories by atomic rename,
+   install clean Node 22 dependencies, typecheck, syntax-check and build into
+   an absent, clean `dist` directory.
 6. Restart and health-check Marveen while Federation is still disabled.
 7. Pair the standalone Bridge using only the public Federation API.
 8. Stop the legacy Bridge, activate the standalone service, and verify readiness.
@@ -23,10 +24,18 @@ the Marveen source tree.
 ## Automatic rollback
 
 Every failure after the first mutation runs the rollback trap. The first action
-is always the public Federation master switch to `disabled`. The new service is
-then stopped. If the Marveen source was switched, the original branch and
-commit, the exact pre-cutover stash, and the old `node_modules` directory are
-restored before the Claude dashboard is restarted.
+is always the public Federation master switch to `disabled`. A peer created by
+the current attempt is removed only after its private state and token
+fingerprints prove ownership. The new service is then stopped. If the Marveen
+source was switched, the original branch and commit, the exact pre-cutover
+stash, and the old `node_modules` and `dist` directories are restored before
+the Claude dashboard is restarted. If the legacy Bridge had already been
+stopped, it is enabled and started again and both services must pass their
+health checks.
+
+The standalone systemd unit always references the immutable release directory.
+The `current` symlink remains an atomic release pointer but is never passed to
+the runtime-module loader, whose symlink-traversal rejection stays enabled.
 
 The quarantined 0.2.1 adapter is deliberately not re-applied. Therefore the
 rollback target is a safe Claude-only Marveen, not the old coupled architecture.

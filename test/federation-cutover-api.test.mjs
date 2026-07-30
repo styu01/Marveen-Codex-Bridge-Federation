@@ -202,6 +202,11 @@ test('canary rejects duplicate exact replies', async () => {
 
 test('cutover script keeps rollback and independence invariants', () => {
   const source = readFileSync(resolve('scripts/cutover-phase7.sh'), 'utf8')
+  const installer = readFileSync(resolve('scripts/install-phase7.sh'), 'utf8')
+  const recovery = readFileSync(
+    resolve('scripts/recover-phase7.5-failed-cutover.sh'),
+    'utf8',
+  )
   const verifier = readFileSync(resolve('scripts/verify-phase7.sh'), 'utf8')
   assert.match(source, /Without --execute this command is a read-only preflight/)
   assert.match(source, /ROLLBACK: disabling Federation first/)
@@ -209,7 +214,15 @@ test('cutover script keeps rollback and independence invariants', () => {
   assert.match(source, /stash push --include-untracked/)
   assert.match(source, /stash apply "\$\{STASH_COMMIT\}"/)
   assert.match(source, /node_modules-before-cutover/)
+  assert.match(source, /dist-before-cutover/)
+  assert.match(source, /dist-failed-candidate/)
+  assert.match(source, /mv -- "\$\{MARVEEN_ROOT\}\/dist" "\$\{OLD_DIST\}"/)
+  assert.match(source, /mv -- "\$\{OLD_DIST\}" "\$\{MARVEEN_ROOT\}\/dist"/)
   assert.match(source, /systemctl --user disable --now bela-codex-bridge\.service/)
+  assert.match(source, /systemctl --user enable --now bela-codex-bridge\.service/)
+  assert.match(source, /PAIRING_CREATED/)
+  assert.match(source, /--rollback/)
+  assert.match(source, /rollback_verified/)
   assert.match(source, /EXPECTED_MARVEEN_VERSION="1\.25\.1"/)
   assert.match(source, /LEGACY_MARVEEN_VERSION="1\.21\.1"/)
   assert.match(source, /candidate is not Marveen \$\{EXPECTED_MARVEEN_VERSION\}/)
@@ -229,6 +242,23 @@ test('cutover script keeps rollback and independence invariants', () => {
   assert.match(source, /current Marveen Federation state cannot be proven disabled/)
   assert.match(source, /dist\/web\/routes\/federation\.js/)
   assert.match(source, /dist\/src\/web\/routes\/federation\.js/)
+  assert.match(source, /dist\/providers\/codex-provider\.js/)
+  assert.match(
+    installer,
+    /s\|@RELEASE_ROOT@\|\$\{RELEASE_ROOT\}\|g/,
+  )
+  assert.match(
+    installer,
+    /s\|@BETTER_SQLITE3_PATH@\|\$\{RELEASE_ROOT\}\/node_modules\/better-sqlite3\|g/,
+  )
+  assert.doesNotMatch(
+    installer,
+    /s\|@RELEASE_ROOT@\|\$\{CURRENT_LINK\}\|g/,
+  )
+  assert.match(recovery, /HYBRID-DIST RECOVERY PREFLIGHT PASS \(NO MUTATION\)/)
+  assert.match(recovery, /dist-hybrid-phase7\.5/)
+  assert.match(recovery, /CLEAN DIST RECOVERY FAILED; ORIGINAL DIST RESTORED/)
+  assert.doesNotMatch(recovery, /\brm\s+-rf\b/)
   assert.doesNotMatch(source, /1\.25\.0/)
   assert.match(source, /PHASE 7 PRODUCTION CUTOVER PASS/)
   assert.doesNotMatch(source, /git reset --hard/)
@@ -238,9 +268,9 @@ test('cutover script keeps rollback and independence invariants', () => {
     source,
     /\b(?:sed|perl|python3?)\b[^\n]*src\/web\/|web\/app\.js.*replace/,
   )
-  assert.match(verifier, /tests 106\$/)
-  assert.match(verifier, /pass 106\$/)
-  assert.match(verifier, /all 106 Phase 1-7/)
+  assert.match(verifier, /tests 109\$/)
+  assert.match(verifier, /pass 109\$/)
+  assert.match(verifier, /all 109 Phase 1-7/)
   assert.doesNotMatch(verifier, /expected exactly 105/)
 })
 

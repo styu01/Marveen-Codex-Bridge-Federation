@@ -47,3 +47,24 @@ RESULT: PHASE 5 REAL APPROVAL AND MESSAGE TOOL PASS
 RESULT: PHASE 5.2 REAL IMAGEGEN AND ARTIFACT PASS
 RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION, IMAGEGEN AND DASHBOARD PASS
 ```
+
+## Phase 7.6 rollback-hardening
+
+Dátum: 2026-07-30
+
+- immutable release-path systemd unit regresszió: PASS;
+- `current` symlink kizárása a runtime-modul és `better-sqlite3` útvonalából:
+  PASS;
+- megszakadt párosítás privát állapot- és token-ujjlenyomat alapú folytatása:
+  PASS;
+- ismeretlen vagy eltérő peer fail-closed: PASS;
+- aktuális kísérletben létrehozott peer ellenőrzött rollbackje: PASS;
+- régi és candidate `dist` atomikus megőrzési szerződése: PASS;
+- legacy Bridge automatikus visszaindítási és readiness-szerződése: PASS;
+- Phase 7.5 hybrid-dist célzott helyreállító preflight/execute szerződése:
+  PASS;
+- célzott új és módosított tesztek: 17/17 PASS.
+
+A teljes 109/109 tesztet a kiadási csomagból, Node 22.23.1 és az ahhoz
+fordított production `better-sqlite3` modul alatt kell lefuttatni. Új éles
+`--execute` cutover addig nem engedélyezett.

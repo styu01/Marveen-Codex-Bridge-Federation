@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="0.3.0-phase7.5"
+VERSION="0.3.0-phase7.6"
 SOURCE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 NODE_BIN=""
 CODEX_BIN=""
@@ -212,9 +212,9 @@ mv -Tf "${CANDIDATE_LINK}.new" "${CANDIDATE_LINK}"
 
 sed \
   -e "s|@NODE_BIN@|${NODE_REAL}|g" \
-  -e "s|@RELEASE_ROOT@|${CURRENT_LINK}|g" \
+  -e "s|@RELEASE_ROOT@|${RELEASE_ROOT}|g" \
   -e "s|@CONFIG_PATH@|${CONFIG_PATH}|g" \
-  -e "s|@BETTER_SQLITE3_PATH@|${CURRENT_LINK}/node_modules/better-sqlite3|g" \
+  -e "s|@BETTER_SQLITE3_PATH@|${RELEASE_ROOT}/node_modules/better-sqlite3|g" \
   -e "s|@STATE_ROOT@|${STATE_ROOT}|g" \
   -e "s|@DATA_ROOT@|${DATA_ROOT}|g" \
   "${RELEASE_ROOT}/systemd/marveen-codex-bridge-federation.service.in" \
