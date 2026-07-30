@@ -1,6 +1,6 @@
-# Phase 7.2 — controlled production cutover
+# Phase 7.3 — controlled production cutover
 
-Phase 7.2 activates the Federation Edition without applying a Codex adapter to
+Phase 7.3 activates the Federation Edition without applying a Codex adapter to
 the Marveen source tree.
 
 ## Safety order

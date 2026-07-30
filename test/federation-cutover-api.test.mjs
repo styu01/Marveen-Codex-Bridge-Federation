@@ -202,6 +202,7 @@ test('canary rejects duplicate exact replies', async () => {
 
 test('cutover script keeps rollback and independence invariants', () => {
   const source = readFileSync(resolve('scripts/cutover-phase7.sh'), 'utf8')
+  const verifier = readFileSync(resolve('scripts/verify-phase7.sh'), 'utf8')
   assert.match(source, /Without --execute this command is a read-only preflight/)
   assert.match(source, /ROLLBACK: disabling Federation first/)
   assert.match(source, /federation-cutover-api\.mjs" \\\n    disable/)
@@ -222,6 +223,10 @@ test('cutover script keeps rollback and independence invariants', () => {
   assert.doesNotMatch(source, /git clean -/)
   assert.doesNotMatch(source, /patch -p/)
   assert.doesNotMatch(source, /src\/web\/|web\/app\.js.*replace/)
+  assert.match(verifier, /tests 106\$/)
+  assert.match(verifier, /pass 106\$/)
+  assert.match(verifier, /all 106 Phase 1-7/)
+  assert.doesNotMatch(verifier, /expected exactly 105/)
 })
 
 test('Phase 0 gate requires canonical MANIFEST.json and verifies SHA256SUMS', (t) => {

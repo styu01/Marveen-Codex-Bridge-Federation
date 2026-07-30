@@ -191,7 +191,7 @@ NODE_OPTIONS=--no-warnings "${NODE_BIN}" -e '
   const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json")))
   const lock = JSON.parse(fs.readFileSync(path.join(root, "package-lock.json")))
   const example = JSON.parse(fs.readFileSync(path.join(root, "config/config.example.json")))
-  if (pkg.version !== "0.3.0-phase7.2") throw new Error("wrong package version")
+  if (pkg.version !== "0.3.0-phase7.3") throw new Error("wrong package version")
   if (pkg.dependencies?.["better-sqlite3"] !== "11.10.0") {
     throw new Error("better-sqlite3 must be pinned")
   }
@@ -239,17 +239,17 @@ TEST_LOG="$(mktemp)"
     NODE_OPTIONS=--no-warnings \
     "${NODE_BIN}" --test test/*.test.mjs
 ) | tee "${TEST_LOG}"
-grep -Eq '^(#|ℹ) tests 105$' "${TEST_LOG}" \
-  || fail "expected exactly 105 tests"
-grep -Eq '^(#|ℹ) pass 105$' "${TEST_LOG}" \
-  || fail "expected exactly 105 passing tests"
+grep -Eq '^(#|ℹ) tests 106$' "${TEST_LOG}" \
+  || fail "expected exactly 106 tests"
+grep -Eq '^(#|ℹ) pass 106$' "${TEST_LOG}" \
+  || fail "expected exactly 106 passing tests"
 grep -Eq '^(#|ℹ) fail 0$' "${TEST_LOG}" \
   || fail "test failures were reported"
 grep -Eq '^(#|ℹ) skipped 0$' "${TEST_LOG}" \
   || fail "tests were skipped"
 grep -Eq '^(#|ℹ) cancelled 0$' "${TEST_LOG}" \
   || fail "tests were cancelled"
-pass "all 105 Phase 1-7 mock, security, installer, cutover and rollback tests pass with no skip"
+pass "all 106 Phase 1-7 mock, security, installer, cutover and rollback tests pass with no skip"
 
 if [[ "${MOCK_ONLY}" -eq 1 ]]; then
   echo "RESULT: PHASE 7 MOCK INSTALLER, CUTOVER, ROLLBACK AND FEDERATION PASS (REAL CODEX NOT RUN)"
