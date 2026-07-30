@@ -9,6 +9,7 @@ import {
   readFileSync,
   readlinkSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -64,6 +65,7 @@ exec /usr/bin/id "$@"
       XDG_CONFIG_HOME: join(home, '.config'),
       XDG_STATE_HOME: join(home, '.local/state'),
       XDG_DATA_HOME: join(home, '.local/share'),
+      CODEX_HOME: join(home, '.codex'),
       PATH: `${bin}:${process.env.PATH}`,
     },
     encoding: 'utf8',
@@ -75,14 +77,14 @@ exec /usr/bin/id "$@"
   const data = join(home, '.local/share/marveen-codex-bridge')
   const candidate = join(data, 'candidate')
   assert.equal(lstatSync(candidate).isSymbolicLink(), true)
-  assert.match(readlinkSync(candidate), /0\.3\.0-phase7\.6$/)
+  assert.match(readlinkSync(candidate), /0\.3\.0-phase7\.11$/)
   assert.equal(existsSync(join(data, 'current')), false)
   assert.equal(
     JSON.parse(readFileSync(join(
       data,
-      'releases/0.3.0-phase7.6/package.json',
+      'releases/0.3.0-phase7.11/package.json',
     ))).version,
-    '0.3.0-phase7.6',
+    '0.3.0-phase7.11',
   )
   const configRoot = join(home, '.config/marveen-codex-bridge')
   assert.equal(lstatSync(join(configRoot, 'config.json')).mode & 0o777, 0o600)
@@ -94,17 +96,25 @@ exec /usr/bin/id "$@"
   assert.doesNotMatch(unit, /bela-codex-bridge/)
   assert.match(
     unit,
-    /releases\/0\.3\.0-phase7\.6\/src\/main\.mjs/,
+    /releases\/0\.3\.0-phase7\.11\/src\/main\.mjs/,
   )
   assert.match(
     unit,
-    /MARVEEN_CODEX_BRIDGE_RUNTIME_MODULE=.*releases\/0\.3\.0-phase7\.6\/src\/codex-runtime-module\.mjs/,
+    /MARVEEN_CODEX_BRIDGE_RUNTIME_MODULE=.*releases\/0\.3\.0-phase7\.11\/src\/codex-runtime-module\.mjs/,
   )
   assert.match(
     unit,
-    /MARVEEN_CODEX_BRIDGE_BETTER_SQLITE3_PATH=.*releases\/0\.3\.0-phase7\.6\/node_modules\/better-sqlite3/,
+    /MARVEEN_CODEX_BRIDGE_BETTER_SQLITE3_PATH=.*releases\/0\.3\.0-phase7\.11\/node_modules\/better-sqlite3/,
   )
+  assert.match(unit, /Environment=CODEX_HOME=.*\/\.codex/)
+  assert.match(unit, /ReadWritePaths=.*\/\.codex/)
   assert.doesNotMatch(unit, /marveen-codex-bridge\/current/)
+  const installer = readFileSync(resolve('scripts/install-phase7.sh'), 'utf8')
+  assert.ok(
+    installer.indexOf('systemctl --user reset-failed marveen-codex-bridge.service')
+      < installer.indexOf('systemctl --user enable --now marveen-codex-bridge.service'),
+    'a prior failed release must not leave the activation start-limited',
+  )
 })
 
 test('Phase 7 dependency lifecycle PATH is pinned to the selected Node 22 bin', (t) => {
@@ -160,6 +170,7 @@ exec /usr/bin/id "$@"
       XDG_CONFIG_HOME: join(home, '.config'),
       XDG_STATE_HOME: join(home, '.local/state'),
       XDG_DATA_HOME: join(home, '.local/share'),
+      CODEX_HOME: join(home, '.codex'),
       PATH: `${commandBin}:${process.env.PATH}`,
       PHASE6_PATH_CAPTURE: pathCapture,
     },
@@ -167,4 +178,61 @@ exec /usr/bin/id "$@"
   })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   assert.equal(readFileSync(pathCapture, 'utf8').split(':')[0], nodeBin)
+})
+
+test('Phase 7 installer rejects a symbolic-link CODEX_HOME', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'phase7-codex-home-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const home = join(root, 'home')
+  const bin = join(root, 'bin')
+  const redirected = join(root, 'redirected-codex-home')
+  mkdirSync(home)
+  mkdirSync(bin)
+  mkdirSync(redirected)
+  symlinkSync(redirected, join(home, '.codex'))
+
+  const fakeCodex = join(bin, 'codex')
+  writeFileSync(fakeCodex, `#!/usr/bin/env bash
+if [[ "\${1:-}" == "--version" ]]; then echo "codex-cli 0.145.0"; exit 0; fi
+if [[ "\${1:-}" == "login" && "\${2:-}" == "status" ]]; then
+  echo "Logged in using ChatGPT"; exit 0
+fi
+exit 1
+`)
+  chmodSync(fakeCodex, 0o755)
+  const fakeNode = join(bin, 'node22')
+  writeFileSync(fakeNode, `#!/usr/bin/env bash
+if [[ "\${1:-}" == "--version" ]]; then echo "v22.23.1"; exit 0; fi
+exec "${process.execPath}" "$@"
+`)
+  chmodSync(fakeNode, 0o755)
+  const fakeId = join(bin, 'id')
+  writeFileSync(fakeId, `#!/usr/bin/env bash
+if [[ "\${1:-}" == "-u" ]]; then echo "1000"; exit 0; fi
+exec /usr/bin/id "$@"
+`)
+  chmodSync(fakeId, 0o755)
+
+  const result = spawnSync('bash', [
+    resolve('scripts/install-phase7.sh'),
+    '--node-bin', fakeNode,
+    '--codex-bin', fakeCodex,
+    '--prepare-only',
+    '--skip-dependencies',
+    '--skip-tests',
+  ], {
+    cwd: resolve('.'),
+    env: {
+      ...process.env,
+      HOME: home,
+      XDG_CONFIG_HOME: join(home, '.config'),
+      XDG_STATE_HOME: join(home, '.local/state'),
+      XDG_DATA_HOME: join(home, '.local/share'),
+      CODEX_HOME: join(home, '.codex'),
+      PATH: `${bin}:${process.env.PATH}`,
+    },
+    encoding: 'utf8',
+  })
+  assert.equal(result.status, 1)
+  assert.match(result.stderr, /CODEX_HOME must be a real directory, not a symlink/)
 })
