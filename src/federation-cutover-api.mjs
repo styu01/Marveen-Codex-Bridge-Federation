@@ -239,7 +239,11 @@ export async function runFederationCanary({
         code: 'canary_failed',
       })
     }
-    if (original.length === 1 && original[0]?.status === 'done' && replies.length === 1) {
+    if (
+      original.length === 1
+      && original[0]?.status === 'delivered'
+      && replies.length === 1
+    ) {
       return { messageId: created.id, replyId: replies[0].id, marker }
     }
     if (replies.length > 1) {
