@@ -191,7 +191,7 @@ NODE_OPTIONS=--no-warnings "${NODE_BIN}" -e '
   const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json")))
   const lock = JSON.parse(fs.readFileSync(path.join(root, "package-lock.json")))
   const example = JSON.parse(fs.readFileSync(path.join(root, "config/config.example.json")))
-  if (pkg.version !== "0.3.0-phase7.1") throw new Error("wrong package version")
+  if (pkg.version !== "0.3.0-phase7.2") throw new Error("wrong package version")
   if (pkg.dependencies?.["better-sqlite3"] !== "11.10.0") {
     throw new Error("better-sqlite3 must be pinned")
   }

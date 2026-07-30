@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="0.3.0-phase7.1"
+VERSION="0.3.0-phase7.2"
 EXPECTED_MARVEEN_VERSION="1.25.1"
 SOURCE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 MARVEEN_ROOT="${HOME}/marveen"
@@ -71,8 +71,10 @@ done
   || fail "Marveen root is not a Git worktree"
 [[ -n "${PHASE0_ROOT}" && -d "${PHASE0_ROOT}" ]] \
   || fail "--phase0-root is required"
-[[ -f "${PHASE0_ROOT}/manifest.json" ]] \
+[[ -f "${PHASE0_ROOT}/MANIFEST.json" && ! -L "${PHASE0_ROOT}/MANIFEST.json" ]] \
   || fail "verified Phase 0 manifest is missing"
+[[ -f "${PHASE0_ROOT}/SHA256SUMS" && ! -L "${PHASE0_ROOT}/SHA256SUMS" ]] \
+  || fail "verified Phase 0 checksum inventory is missing"
 for archive in \
   private/marveen-source-checkpoint.tar.gz \
   private/marveen-runtime-backup.tar.gz \
@@ -82,6 +84,11 @@ do
   [[ -f "${PHASE0_ROOT}/${archive}" ]] \
     || fail "Phase 0 checkpoint is incomplete: ${archive}"
 done
+(
+  cd -- "${PHASE0_ROOT}"
+  sha256sum -c -- SHA256SUMS >/dev/null
+) || fail "Phase 0 checkpoint checksum verification failed"
+pass "Phase 0 manifest and checkpoint checksums are verified"
 [[ "${CANDIDATE_COMMIT}" =~ ^[0-9a-fA-F]{7,40}$ ]] \
   || fail "--candidate-commit must be a Git object id"
 [[ -f "${BUNDLE}" && ! -L "${BUNDLE}" ]] \

@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { createHash } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import {
   CutoverApiError,
@@ -201,10 +211,98 @@ test('cutover script keeps rollback and independence invariants', () => {
   assert.match(source, /systemctl --user disable --now bela-codex-bridge\.service/)
   assert.match(source, /EXPECTED_MARVEEN_VERSION="1\.25\.1"/)
   assert.match(source, /candidate is not Marveen \$\{EXPECTED_MARVEEN_VERSION\}/)
+  assert.match(source, /\$\{PHASE0_ROOT\}\/MANIFEST\.json/)
+  assert.doesNotMatch(source, /\$\{PHASE0_ROOT\}\/manifest\.json/)
+  assert.match(source, /\$\{PHASE0_ROOT\}\/SHA256SUMS/)
+  assert.match(source, /sha256sum -c -- SHA256SUMS/)
+  assert.match(source, /Phase 0 checkpoint checksum verification failed/)
   assert.doesNotMatch(source, /1\.25\.0/)
   assert.match(source, /PHASE 7 PRODUCTION CUTOVER PASS/)
   assert.doesNotMatch(source, /git reset --hard/)
   assert.doesNotMatch(source, /git clean -/)
   assert.doesNotMatch(source, /patch -p/)
   assert.doesNotMatch(source, /src\/web\/|web\/app\.js.*replace/)
+})
+
+test('Phase 0 gate requires canonical MANIFEST.json and verifies SHA256SUMS', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'phase7-phase0-gate-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const marveen = join(root, 'marveen')
+  const phase0 = join(root, 'phase0')
+  const privateDir = join(phase0, 'private')
+  const bin = join(root, 'bin')
+  mkdirSync(join(marveen, '.git'), { recursive: true })
+  mkdirSync(privateDir, { recursive: true })
+  mkdirSync(bin)
+  const fakeId = join(bin, 'id')
+  writeFileSync(fakeId, `#!/usr/bin/env bash
+if [[ "\${1:-}" == "-u" ]]; then echo "1000"; exit 0; fi
+exec /usr/bin/id "$@"
+`)
+  chmodSync(fakeId, 0o755)
+
+  const files = [
+    'MANIFEST.json',
+    'private/marveen-source-checkpoint.tar.gz',
+    'private/marveen-runtime-backup.tar.gz',
+    'private/legacy-bridge-backup.tar.gz',
+    'diagnostics-safe.tar.gz',
+  ]
+  for (const path of files) {
+    writeFileSync(join(phase0, path), `${path}\n`)
+  }
+  const checksum = (path) => createHash('sha256')
+    .update(readFileSync(join(phase0, path)))
+    .digest('hex')
+  writeFileSync(
+    join(phase0, 'SHA256SUMS'),
+    files.map((path) => `${checksum(path)}  ${path}`).join('\n') + '\n',
+  )
+
+  const bundle = join(root, 'candidate.bundle')
+  writeFileSync(bundle, 'not-a-real-bundle\n')
+  writeFileSync(
+    `${bundle}.sha256`,
+    `${createHash('sha256').update(readFileSync(bundle)).digest('hex')}  candidate.bundle\n`,
+  )
+  const run = () => spawnSync('bash', [
+    resolve('scripts/cutover-phase7.sh'),
+    '--marveen-root', marveen,
+    '--phase0-root', phase0,
+    '--candidate-commit', 'deadbee',
+    '--bundle', bundle,
+  ], {
+    encoding: 'utf8',
+    env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+  })
+
+  const canonical = run()
+  assert.equal(canonical.status, 1)
+  assert.match(
+    canonical.stdout,
+    /PASS: Phase 0 manifest and checkpoint checksums are verified/,
+  )
+  assert.match(canonical.stderr, /candidate bundle is invalid/)
+
+  writeFileSync(
+    join(phase0, 'manifest.json'),
+    readFileSync(join(phase0, 'MANIFEST.json')),
+  )
+  rmSync(join(phase0, 'MANIFEST.json'))
+  const wrongCase = run()
+  assert.equal(wrongCase.status, 1)
+  assert.match(wrongCase.stderr, /verified Phase 0 manifest is missing/)
+
+  writeFileSync(join(phase0, 'MANIFEST.json'), 'MANIFEST.json\n')
+  rmSync(join(phase0, 'manifest.json'))
+  writeFileSync(
+    join(phase0, 'private/marveen-source-checkpoint.tar.gz'),
+    'tampered\n',
+  )
+  const tampered = run()
+  assert.equal(tampered.status, 1)
+  assert.match(
+    tampered.stderr,
+    /Phase 0 checkpoint checksum verification failed/,
+  )
 })
