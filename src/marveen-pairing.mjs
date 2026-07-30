@@ -350,6 +350,40 @@ export async function stageMarveenPairing({
   }
 }
 
+export function summarizeMarveenPairing(result) {
+  const peerId = result?.state?.peerId ?? result?.peerId ?? result?.plan?.peerId
+  if (result?.status === 'pairing-rolled-back') {
+    return {
+      status: result.status,
+      createdNow: false,
+      peerId,
+    }
+  }
+  const stateSystemId = result?.state?.marveenSystemId
+  const planSystemId = result?.plan?.marveenSystemId
+  if (
+    stateSystemId !== undefined
+    && planSystemId !== undefined
+    && String(stateSystemId).toLowerCase() !== String(planSystemId).toLowerCase()
+  ) {
+    throw new PairingError('Pairing result contains conflicting Marveen system ids', {
+      code: 'pairing_system_id_mismatch',
+    })
+  }
+  const marveenSystemId = stateSystemId ?? planSystemId
+  if (typeof marveenSystemId !== 'string' || marveenSystemId.length === 0) {
+    throw new PairingError('Pairing result is missing the Marveen system id', {
+      code: 'pairing_system_id_missing',
+    })
+  }
+  return {
+    status: result.status,
+    createdNow: result.createdNow === true,
+    peerId,
+    marveenSystemId,
+  }
+}
+
 export async function rollbackMarveenPairing({
   marveenOrigin,
   dashboardTokenFile,
