@@ -121,7 +121,7 @@ test('disable persists the safety switch even if apply fails', async () => {
   assert.equal(mock.state.enabled, false)
 })
 
-test('canary requires one terminal original and exactly one exact reply', async () => {
+test('canary requires a delivered federated original and exactly one exact reply', async () => {
   let polls = 0
   const request = async (path, init = {}) => {
     if (path === '/api/messages' && init.method === 'POST') {
@@ -145,7 +145,7 @@ test('canary requires one terminal original and exactly one exact reply', async 
           id: 51,
           from_agent: 'bela',
           to_agent: 'codex/programozo',
-          status: 'done',
+          status: 'delivered',
         },
         {
           id: 52,
@@ -173,7 +173,7 @@ test('canary rejects duplicate exact replies', async () => {
   const request = async (path) => {
     if (path === '/api/messages') return { id: 51 }
     return [
-      { id: 51, status: 'done' },
+      { id: 51, status: 'delivered' },
       {
         id: 52,
         from_agent: 'codex/programozo',
@@ -210,7 +210,7 @@ test('cutover script keeps rollback and independence invariants', () => {
   const verifier = readFileSync(resolve('scripts/verify-phase7.sh'), 'utf8')
   assert.match(source, /Without --execute this command is a read-only preflight/)
   assert.match(source, /ROLLBACK: disabling Federation first/)
-  assert.match(source, /federation-cutover-api\.mjs" \\\n    disable/)
+  assert.match(source, /federation-cutover-api\.mjs" \\\n\s+disable/)
   assert.match(source, /stash push --include-untracked/)
   assert.match(source, /stash apply "\$\{STASH_COMMIT\}"/)
   assert.match(source, /node_modules-before-cutover/)
@@ -220,8 +220,48 @@ test('cutover script keeps rollback and independence invariants', () => {
   assert.match(source, /mv -- "\$\{OLD_DIST\}" "\$\{MARVEEN_ROOT\}\/dist"/)
   assert.match(source, /systemctl --user disable --now bela-codex-bridge\.service/)
   assert.match(source, /systemctl --user enable --now bela-codex-bridge\.service/)
+  assert.ok(
+    source.indexOf('systemctl --user disable --now bela-codex-bridge.service')
+      < source.indexOf('git -C "${MARVEEN_ROOT}" stash push --include-untracked'),
+    'the real systemd smoke test must happen before Marveen mutation',
+  )
+  assert.ok(
+    source.indexOf('standalone Bridge passed the real systemd sandbox before Marveen mutation')
+      < source.indexOf('git -C "${MARVEEN_ROOT}" stash push --include-untracked'),
+    'readiness must be proven before the production checkout is stashed',
+  )
+  const liveInstallerCall = source.slice(
+    source.indexOf('"${SOURCE_ROOT}/scripts/install-phase7.sh"'),
+    source.indexOf('standalone Bridge passed the real systemd sandbox'),
+  )
+  assert.match(liveInstallerCall, /--activate/)
+  assert.match(liveInstallerCall, /--skip-tests/)
+  assert.doesNotMatch(
+    liveInstallerCall,
+    /--skip-dependencies/,
+    'production cutover must install the immutable release dependencies',
+  )
+  assert.match(
+    source,
+    /if \[\[ "\$\{MARVEEN_SWITCHED\}" -eq 1 \]\]; then\n    echo "ROLLBACK: disabling Federation first"/,
+  )
   assert.match(source, /PAIRING_CREATED/)
   assert.match(source, /--rollback/)
+  assert.match(
+    readFileSync(resolve('scripts/pair-marveen-phase6.2.mjs'), 'utf8'),
+    /summarizeMarveenPairing\(result\)/,
+  )
+  assert.match(source, /reconcile-bridge-peer\.mjs/)
+  assert.match(source, /bridge-config-before-peer-reconcile\.json/)
+  assert.match(
+    source,
+    /install -m 0600 "\$\{BRIDGE_CONFIG_BACKUP\}" "\$\{BRIDGE_CONFIG\}"/,
+  )
+  assert.ok(
+    source.indexOf('Bridge peer identity matches the Marveen Federation systemId')
+      < source.indexOf('federation-cutover-api.mjs" \\\n  enable'),
+    'peer identity must be reconciled before Federation is enabled',
+  )
   assert.match(source, /rollback_verified/)
   assert.match(source, /EXPECTED_MARVEEN_VERSION="1\.25\.1"/)
   assert.match(source, /LEGACY_MARVEEN_VERSION="1\.21\.1"/)
@@ -268,9 +308,9 @@ test('cutover script keeps rollback and independence invariants', () => {
     source,
     /\b(?:sed|perl|python3?)\b[^\n]*src\/web\/|web\/app\.js.*replace/,
   )
-  assert.match(verifier, /tests 109\$/)
-  assert.match(verifier, /pass 109\$/)
-  assert.match(verifier, /all 109 Phase 1-7/)
+  assert.match(verifier, /tests 117\$/)
+  assert.match(verifier, /pass 117\$/)
+  assert.match(verifier, /all 117 Phase 1-7/)
   assert.doesNotMatch(verifier, /expected exactly 105/)
 })
 
