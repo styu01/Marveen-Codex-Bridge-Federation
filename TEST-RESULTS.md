@@ -48,7 +48,7 @@ RESULT: PHASE 5.2 REAL IMAGEGEN AND ARTIFACT PASS
 RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION, IMAGEGEN AND DASHBOARD PASS
 ```
 
-## Phase 7.11 dependency, systemd és Federation peer-identitás kapu
+## 0.3.0 dependency, systemd és Federation peer-identitás kapu
 
 Dátum: 2026-07-30
 

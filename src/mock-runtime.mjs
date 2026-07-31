@@ -28,6 +28,8 @@ export class MockCodexRuntime {
   listRuns({ state = null, agentId = null, limit = 100 } = {}) {
     return [...this.runs.values()]
       .map(({ result }) => ({
+        model: this.agents.get(result.agentId)?.model ?? null,
+        reasoningEffort: this.agents.get(result.agentId)?.reasoningEffort ?? null,
         idempotencyKey: result.idempotencyKey,
         runId: result.runId,
         agentId: result.agentId,

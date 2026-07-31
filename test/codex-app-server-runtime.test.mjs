@@ -89,6 +89,8 @@ test('real App Server protocol handshake and persistent idempotent run succeed',
   t.after(() => runtime.stop())
   assert.equal(runtime.isReady(), true)
   assert.equal(runtime.manifestAgents()[0].id, 'programozo')
+  assert.equal(runtime.manifestAgents()[0].model, 'gpt-5.6-terra')
+  assert.equal(runtime.manifestAgents()[0].reasoningEffort, 'high')
   const first = await runtime.run({
     agentId: 'programozo',
     prompt: 'PHASE4_RUNTIME_OK',

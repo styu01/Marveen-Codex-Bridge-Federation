@@ -155,6 +155,7 @@ export class CodexAppServerRuntime {
       id: agent.id,
       displayName: agent.displayName,
       model: agent.model,
+      reasoningEffort: agent.reasoningEffort,
       ...(agent.capabilitySummary
         ? { capabilitySummary: agent.capabilitySummary }
         : {}),
@@ -384,7 +385,14 @@ export class CodexAppServerRuntime {
 
   listRuns(query = {}) {
     if (!this.state) throw errorWithCode('runtime_unavailable', 'Codex runtime is not ready')
-    return this.state.listRuns(query)
+    return this.state.listRuns(query).map((run) => {
+      const agent = this.agents.get(run.agentId)
+      return {
+        ...run,
+        model: agent?.model ?? null,
+        reasoningEffort: agent?.reasoningEffort ?? null,
+      }
+    })
   }
 
   listArtifacts(query = {}) {

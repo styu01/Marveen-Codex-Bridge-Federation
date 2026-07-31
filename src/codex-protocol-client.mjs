@@ -115,7 +115,7 @@ export class CodexProtocolClient extends EventEmitter {
         clientInfo: {
           name: 'marveen_codex_bridge_federation',
           title: 'Marveen Codex Bridge Federation',
-          version: '0.3.0-phase7.11.0',
+          version: '0.3.0',
         },
         capabilities: {
           experimentalApi: true,

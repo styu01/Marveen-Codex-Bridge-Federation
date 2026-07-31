@@ -54,14 +54,14 @@ function renderCards(summary) {
 
 function renderAgents(agents) {
   byId('agents').innerHTML = agents.length
-    ? agents.map((agent) => `<div class="agent"><strong>${escapeHtml(agent.displayName)}</strong> <span class="muted">${escapeHtml(agent.id)} · ${escapeHtml(agent.model)}</span></div>`).join('')
+    ? agents.map((agent) => `<div class="agent"><strong>${escapeHtml(agent.displayName)}</strong> <span class="muted">${escapeHtml(agent.id)} · ${escapeHtml(agent.model)} · effort: ${escapeHtml(agent.reasoningEffort)}</span></div>`).join('')
     : '<p class="muted">Nincs konfigurált agent.</p>'
 }
 
 function renderRuns(runs) {
   byId('runs').innerHTML = runs.length
-    ? runs.map((run) => `<tr><td>${escapeHtml(run.agentId)}</td><td class="state">${escapeHtml(run.state)}</td><td>${escapeHtml(run.runId.slice(0, 12))}</td><td>${new Date(run.updatedAtMs).toLocaleString('hu-HU')}</td></tr>`).join('')
-    : '<tr><td colspan="4" class="muted">Nincs futás.</td></tr>'
+    ? runs.map((run) => `<tr><td>${escapeHtml(run.agentId)}</td><td>${escapeHtml(run.model)}</td><td>${escapeHtml(run.reasoningEffort)}</td><td class="state">${escapeHtml(run.state)}</td><td>${escapeHtml(run.runId.slice(0, 12))}</td><td>${new Date(run.updatedAtMs).toLocaleString('hu-HU')}</td></tr>`).join('')
+    : '<tr><td colspan="6" class="muted">Nincs futás.</td></tr>'
 }
 
 async function artifactImage(artifact) {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="0.3.0-phase7.11"
+VERSION="0.3.0"
 SOURCE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 NODE_BIN=""
 CODEX_BIN=""
@@ -148,6 +148,9 @@ elif [[ ! -f "${CONFIG_PATH}" ]]; then
     "const {randomBytes}=require('crypto');process.stdout.write(randomBytes(32).toString('hex')+'\\n')" \
     > "${CONFIG_ROOT}/marveen-outbound.token"
   chmod 0600 "${CONFIG_ROOT}"/*.token
+  DEVELOPER_INSTRUCTIONS_JSON="$("${NODE_REAL}" -e \
+    "const fs=require('fs');process.stdout.write(JSON.stringify(fs.readFileSync(process.argv[1],'utf8')))" \
+    "${RELEASE_ROOT}/config/programozo-developer-instructions.hu.md")"
   cat > "${CONFIG_PATH}" <<EOF
 {
   "version": 1,
@@ -172,6 +175,7 @@ elif [[ ! -f "${CONFIG_PATH}" ]]; then
     "approvalPolicy": "manual",
     "federationPeer": "marveen",
     "reasoningEffort": "high",
+    "developerInstructions": ${DEVELOPER_INSTRUCTIONS_JSON},
     "networkEnabled": false
   }],
   "peers": [{
@@ -196,6 +200,23 @@ EOF
   chmod 0600 "${CONFIG_ROOT}/marveen-pairing.env"
 fi
 
+chmod 0600 "${CONFIG_PATH}"
+"${NODE_REAL}" --input-type=module - \
+  "${CONFIG_PATH}" \
+  "${RELEASE_ROOT}/config/programozo-developer-instructions.hu.md" <<'NODE'
+import { chmodSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+
+const [, , configPath, instructionsPath] = process.argv
+const config = JSON.parse(readFileSync(configPath, 'utf8'))
+const agent = config.agents?.find((entry) => entry?.id === 'programozo')
+if (agent && (!agent.developerInstructions || agent.developerInstructions.trim() === '')) {
+  agent.developerInstructions = readFileSync(instructionsPath, 'utf8')
+  const temporary = `${configPath}.0.3.0.tmp`
+  writeFileSync(temporary, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 })
+  chmodSync(temporary, 0o600)
+  renameSync(temporary, configPath)
+}
+NODE
 chmod 0600 "${CONFIG_PATH}"
 "${NODE_REAL}" --input-type=module - \
   "${RELEASE_ROOT}/src/config.mjs" "${CONFIG_PATH}" "${STATE_ROOT}" "${DATA_ROOT}" <<'NODE'

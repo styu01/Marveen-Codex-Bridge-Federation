@@ -236,6 +236,8 @@ test('standalone dashboard is static, hardened and admin API remains authenticat
   assert.doesNotMatch(dashboard.body, new RegExp(ADMIN_TOKEN))
 
   const script = await textRequest(env.endpoint.baseUrl, '/dashboard/app.js')
+  assert.match(script.body, /reasoningEffort/)
+  assert.match(dashboard.body, /<th>Effort<\/th>/)
   assert.equal(script.status, 200)
   assert.match(script.headers.get('content-type'), /^text\/javascript/)
   assert.match(script.body, /sessionStorage/)
@@ -250,7 +252,7 @@ test('standalone dashboard is static, hardened and admin API remains authenticat
     { token: ADMIN_TOKEN },
   )
   assert.equal(summary.status, 200)
-  assert.equal(summary.body.data.bridgeVersion, '0.3.0-phase7.11.0')
+  assert.equal(summary.body.data.bridgeVersion, '0.3.0')
   assert.equal(summary.body.data.readiness.ready, true)
   assert.equal(summary.body.data.agents[0].id, 'programozo')
 

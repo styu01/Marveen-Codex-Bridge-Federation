@@ -1,6 +1,6 @@
-# Phase 7.11 — controlled production cutover
+# 0.3.0 — controlled production cutover
 
-Phase 7.11 activates the Federation Edition without applying a Codex adapter to
+The 0.3.0 release activates the Federation Edition without applying a Codex adapter to
 the Marveen source tree.
 
 ## Safety order
