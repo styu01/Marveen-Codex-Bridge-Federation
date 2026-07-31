@@ -93,10 +93,18 @@ exec /usr/bin/id "$@"
   assert.match(installedConfig.agents[0].developerInstructions, /Codex programozó/)
   assert.match(installedConfig.agents[0].developerInstructions, /marveen_agent_message_send/)
   assert.equal(lstatSync(join(configRoot, 'marveen-pairing.env')).mode & 0o777, 0o600)
+  const unitPath = join(
+    home,
+    '.config/systemd/user/marveen-codex-bridge.service.candidate',
+  )
   const unit = readFileSync(
-    join(home, '.config/systemd/user/marveen-codex-bridge.service'),
+    unitPath,
     'utf8',
   )
+  assert.equal(existsSync(join(
+    home,
+    '.config/systemd/user/marveen-codex-bridge.service',
+  )), false)
   assert.doesNotMatch(unit, /bela-codex-bridge/)
   assert.match(
     unit,
@@ -116,9 +124,10 @@ exec /usr/bin/id "$@"
   const installer = readFileSync(resolve('scripts/install-phase7.sh'), 'utf8')
   assert.ok(
     installer.indexOf('systemctl --user reset-failed marveen-codex-bridge.service')
-      < installer.indexOf('systemctl --user enable --now marveen-codex-bridge.service'),
+      < installer.indexOf('systemctl --user restart marveen-codex-bridge.service'),
     'a prior failed release must not leave the activation start-limited',
   )
+  assert.match(installer, /mv -f "\$\{UNIT_PATH\}\.rollback" "\$\{UNIT_PATH\}"/)
 })
 
 test('Phase 7 dependency lifecycle PATH is pinned to the selected Node 22 bin', (t) => {

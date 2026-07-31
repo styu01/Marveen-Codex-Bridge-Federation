@@ -246,20 +246,34 @@ NODE
 ln -sfn "${RELEASE_ROOT}" "${CANDIDATE_LINK}.new"
 mv -Tf "${CANDIDATE_LINK}.new" "${CANDIDATE_LINK}"
 
-sed \
-  -e "s|@NODE_BIN@|${NODE_REAL}|g" \
-  -e "s|@RELEASE_ROOT@|${RELEASE_ROOT}|g" \
-  -e "s|@CONFIG_PATH@|${CONFIG_PATH}|g" \
-  -e "s|@BETTER_SQLITE3_PATH@|${RELEASE_ROOT}/node_modules/better-sqlite3|g" \
-  -e "s|@STATE_ROOT@|${STATE_ROOT}|g" \
-  -e "s|@DATA_ROOT@|${DATA_ROOT}|g" \
-  -e "s|@CODEX_HOME@|${CODEX_HOME}|g" \
-  "${RELEASE_ROOT}/systemd/marveen-codex-bridge-federation.service.in" \
-  > "${UNIT_PATH}.new"
-chmod 0600 "${UNIT_PATH}.new"
-mv -f "${UNIT_PATH}.new" "${UNIT_PATH}"
+render_unit() {
+  local target="$1"
+  local output="$2"
+  local template="${target}/systemd/marveen-codex-bridge-federation.service.in"
+  [[ -d "${target}" && ! -L "${target}" && -f "${template}" ]] \
+    || { echo "Release cannot render a systemd unit: ${target}" >&2; return 1; }
+  sed \
+    -e "s|@NODE_BIN@|${NODE_REAL}|g" \
+    -e "s|@RELEASE_ROOT@|${target}|g" \
+    -e "s|@CONFIG_PATH@|${CONFIG_PATH}|g" \
+    -e "s|@BETTER_SQLITE3_PATH@|${target}/node_modules/better-sqlite3|g" \
+    -e "s|@STATE_ROOT@|${STATE_ROOT}|g" \
+    -e "s|@DATA_ROOT@|${DATA_ROOT}|g" \
+    -e "s|@CODEX_HOME@|${CODEX_HOME}|g" \
+    "${template}" > "${output}"
+  chmod 0600 "${output}"
+}
+
+render_unit "${RELEASE_ROOT}" "${UNIT_PATH}.candidate"
 
 if [[ "${ACTIVATE}" -eq 0 ]]; then
+  # Preparing a candidate must never repoint the installed service. Re-render
+  # the current release to repair any unit left by an older 0.3.0 prerelease.
+  if [[ -L "${CURRENT_LINK}" ]]; then
+    CURRENT_TARGET="$(readlink -f -- "${CURRENT_LINK}")"
+    render_unit "${CURRENT_TARGET}" "${UNIT_PATH}.new"
+    mv -f "${UNIT_PATH}.new" "${UNIT_PATH}"
+  fi
   echo "RESULT: PHASE 7 PREPARED (NOT ACTIVATED)"
   echo "Candidate: ${CANDIDATE_LINK}"
   echo "Pairing file: ${CONFIG_ROOT}/marveen-pairing.env"
@@ -275,15 +289,18 @@ fi
 OLD_TARGET=""
 if [[ -L "${CURRENT_LINK}" ]]; then OLD_TARGET="$(readlink -f -- "${CURRENT_LINK}")"; fi
 if [[ -n "${OLD_TARGET}" ]]; then
+  render_unit "${OLD_TARGET}" "${UNIT_PATH}.rollback"
   ln -sfn "${OLD_TARGET}" "${PREVIOUS_LINK}.new"
   mv -Tf "${PREVIOUS_LINK}.new" "${PREVIOUS_LINK}"
 fi
 ln -sfn "${RELEASE_ROOT}" "${CURRENT_LINK}.new"
 mv -Tf "${CURRENT_LINK}.new" "${CURRENT_LINK}"
+mv -f "${UNIT_PATH}.candidate" "${UNIT_PATH}"
 
 systemctl --user daemon-reload
 systemctl --user reset-failed marveen-codex-bridge.service 2>/dev/null || true
-systemctl --user enable --now marveen-codex-bridge.service
+systemctl --user enable marveen-codex-bridge.service
+systemctl --user restart marveen-codex-bridge.service
 
 READY=0
 for _ in {1..45}; do
@@ -301,9 +318,15 @@ if [[ "${READY}" -ne 1 ]]; then
   if [[ -n "${OLD_TARGET}" ]]; then
     ln -sfn "${OLD_TARGET}" "${CURRENT_LINK}.new"
     mv -Tf "${CURRENT_LINK}.new" "${CURRENT_LINK}"
+    mv -f "${UNIT_PATH}.rollback" "${UNIT_PATH}"
+    systemctl --user daemon-reload
     systemctl --user restart marveen-codex-bridge.service || true
   fi
   exit 1
+fi
+
+if [[ -e "${UNIT_PATH}.rollback" ]]; then
+  mv -f "${UNIT_PATH}.rollback" "${UNIT_PATH}.last-known-good"
 fi
 
 echo "RESULT: PHASE 7 STANDALONE SERVICE ACTIVE"
