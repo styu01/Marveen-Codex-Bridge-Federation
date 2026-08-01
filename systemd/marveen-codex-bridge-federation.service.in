@@ -20,7 +20,8 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=@STATE_ROOT@ @DATA_ROOT@ @CODEX_HOME@
+ReadWritePaths=@CONFIG_ROOT@ @STATE_ROOT@ @DATA_ROOT@ @CODEX_HOME@
+ReadOnlyPaths=@CONFIG_ROOT@/admin.token @CONFIG_ROOT@/marveen-inbound.token @CONFIG_ROOT@/marveen-outbound.token @CONFIG_ROOT@/marveen-pairing.env
 UMask=0077
 
 [Install]

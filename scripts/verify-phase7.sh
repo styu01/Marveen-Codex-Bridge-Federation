@@ -153,6 +153,7 @@ required_files=(
   src/approval-broker.mjs
   src/artifact-manager.mjs
   src/bridge-peer-reconciliation.mjs
+  src/agent-settings-manager.mjs
   src/codex-app-server-runtime.mjs
   src/codex-protocol-client.mjs
   src/codex-runtime-module.mjs
@@ -172,6 +173,7 @@ required_files=(
   web/styles.css
   test/codex-app-server-runtime.test.mjs
   test/bridge-peer-reconciliation.test.mjs
+  test/agent-settings-manager.test.mjs
   test/federation-codex-e2e.test.mjs
   test/fixtures/fake-codex-app-server.mjs
   test/image-artifact-pipeline.test.mjs
@@ -195,7 +197,7 @@ NODE_OPTIONS=--no-warnings "${NODE_BIN}" -e '
   const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json")))
   const lock = JSON.parse(fs.readFileSync(path.join(root, "package-lock.json")))
   const example = JSON.parse(fs.readFileSync(path.join(root, "config/config.example.json")))
-  if (pkg.version !== "0.3.0") throw new Error("wrong package version")
+  if (pkg.version !== "0.3.1") throw new Error("wrong package version")
   if (pkg.dependencies?.["better-sqlite3"] !== "11.10.0") {
     throw new Error("better-sqlite3 must be pinned")
   }
@@ -241,19 +243,19 @@ TEST_LOG="$(mktemp)"
   cd "${SOURCE_ROOT}"
   MARVEEN_CODEX_BRIDGE_BETTER_SQLITE3_PATH="${BETTER_SQLITE3_PATH}" \
     NODE_OPTIONS=--no-warnings \
-    "${NODE_BIN}" --test test/*.test.mjs
+    "${NODE_BIN}" --test --test-concurrency=1 test/*.test.mjs
 ) | tee "${TEST_LOG}"
-grep -Eq '^(#|ℹ) tests 117$' "${TEST_LOG}" \
-  || fail "expected exactly 117 tests"
-grep -Eq '^(#|ℹ) pass 117$' "${TEST_LOG}" \
-  || fail "expected exactly 117 passing tests"
+grep -Eq '^(#|ℹ) tests 124$' "${TEST_LOG}" \
+  || fail "expected exactly 124 tests"
+grep -Eq '^(#|ℹ) pass 124$' "${TEST_LOG}" \
+  || fail "expected exactly 124 passing tests"
 grep -Eq '^(#|ℹ) fail 0$' "${TEST_LOG}" \
   || fail "test failures were reported"
 grep -Eq '^(#|ℹ) skipped 0$' "${TEST_LOG}" \
   || fail "tests were skipped"
 grep -Eq '^(#|ℹ) cancelled 0$' "${TEST_LOG}" \
   || fail "tests were cancelled"
-pass "all 117 Phase 1-7 mock, security, installer, cutover and rollback tests pass with no skip"
+pass "all 124 Phase 1-7 mock, security, settings, installer, cutover and rollback tests pass with no skip"
 
 if [[ "${MOCK_ONLY}" -eq 1 ]]; then
   echo "RESULT: PHASE 7 MOCK INSTALLER, CUTOVER, ROLLBACK AND FEDERATION PASS (REAL CODEX NOT RUN)"

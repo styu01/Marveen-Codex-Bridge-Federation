@@ -1,6 +1,7 @@
 const state = {
   token: sessionStorage.getItem('marveenCodexBridgeToken') || '',
   artifactUrls: [],
+  settings: null,
 }
 
 const byId = (id) => document.getElementById(id)
@@ -17,9 +18,10 @@ async function api(path, options = {}) {
       ...(options.headers || {}),
     },
   })
+  const payload = await response.json().catch(() => ({}))
   if (response.status === 401) throw new Error('unauthorized')
-  if (!response.ok) throw new Error(`HTTP ${response.status}`)
-  return response.json()
+  if (!response.ok) throw new Error(payload.message || payload.error || `HTTP ${response.status}`)
+  return payload
 }
 
 async function optionalData(path) {
@@ -56,6 +58,24 @@ function renderAgents(agents) {
   byId('agents').innerHTML = agents.length
     ? agents.map((agent) => `<div class="agent"><strong>${escapeHtml(agent.displayName)}</strong> <span class="muted">${escapeHtml(agent.id)} · ${escapeHtml(agent.model)} · effort: ${escapeHtml(agent.reasoningEffort)}</span></div>`).join('')
     : '<p class="muted">Nincs konfigurált agent.</p>'
+}
+
+function renderSettings(settings) {
+  state.settings = settings
+  byId('settings-current').innerHTML = [
+    `<span>Agent: <strong>${escapeHtml(settings.displayName)}</strong> (${escapeHtml(settings.agentId)})</span>`,
+    `<span>Modell: <strong>${escapeHtml(settings.model)}</strong></span>`,
+    `<span>Aktuális effort: <strong>${escapeHtml(settings.reasoningEffort)}</strong></span>`,
+  ].join('')
+  byId('settings-effort').value = settings.reasoningEffort
+  byId('settings-role').value = settings.developerInstructions
+  byId('restore-settings').disabled = !settings.canRestore
+}
+
+function renderSettingsAudit(records) {
+  byId('settings-audit').innerHTML = records.length
+    ? records.map((record) => `<tr><td>${new Date(record.timestampMs).toLocaleString('hu-HU')}</td><td>${escapeHtml(record.actor)}</td><td>${escapeHtml(record.action)}</td><td>${escapeHtml(record.changes?.reasoningEffort?.before ?? '—')} → ${escapeHtml(record.changes?.reasoningEffort?.after ?? '—')}</td><td>${escapeHtml(record.outcome)}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="muted">Még nincs beállításmódosítás.</td></tr>'
 }
 
 function renderRuns(runs) {
@@ -99,18 +119,77 @@ function renderApprovals(approvals) {
 }
 
 async function refresh() {
-  const [summary, runs, approvals, artifacts] = await Promise.all([
+  const [summary, runs, approvals, artifacts, settings, audit] = await Promise.all([
     api('/v1/dashboard/summary'),
     optionalData('/v1/runs?limit=100'),
     optionalData('/v1/approvals?state=pending'),
     optionalData('/v1/artifacts'),
+    api('/v1/dashboard/agent-settings'),
+    api('/v1/dashboard/agent-settings/audit?limit=100'),
   ])
   renderCards(summary.data)
   renderAgents(summary.data.agents)
   renderRuns(runs)
   renderApprovals(approvals)
+  renderSettings(settings.data)
+  renderSettingsAudit(audit.data)
   await renderArtifacts(artifacts)
   setConnected(true)
+}
+
+function setSettingsBusy(busy, message = '') {
+  byId('save-settings').disabled = busy
+  byId('restore-settings').disabled = busy || !state.settings?.canRestore
+  byId('settings-status').textContent = message
+  byId('settings-status').className = busy ? 'muted' : ''
+}
+
+async function saveSettings(event) {
+  event.preventDefault()
+  const actor = byId('settings-actor').value.trim()
+  const developerInstructions = byId('settings-role').value
+  const reasoningEffort = byId('settings-effort').value
+  if (!actor || !developerInstructions.trim()) {
+    byId('settings-status').textContent = 'A módosító neve és a szerepkör kötelező.'
+    return
+  }
+  const confirmed = window.confirm(
+    `Biztosan mented a szerepkört és az effortot (${state.settings.reasoningEffort} → ${reasoningEffort})? A régi Codex-thread lezárul, a runtime újraindul.`,
+  )
+  if (!confirmed) return
+  setSettingsBusy(true, 'Mentés és runtime-újraindítás…')
+  try {
+    await api('/v1/dashboard/agent-settings', {
+      method: 'PUT',
+      body: JSON.stringify({ actor, developerInstructions, reasoningEffort, confirm: true }),
+    })
+    await refresh()
+    byId('settings-status').textContent = 'Mentve. A runtime újraindult, a régi thread lezárult.'
+    byId('settings-status').className = 'success'
+  } catch (error) {
+    setSettingsBusy(false, `Sikertelen: ${error.message}`)
+  }
+}
+
+async function restoreSettings() {
+  const actor = byId('settings-actor').value.trim()
+  if (!actor) {
+    byId('settings-status').textContent = 'A visszaállításhoz add meg a módosító nevét.'
+    return
+  }
+  if (!window.confirm('Visszaállítod az előző konfigurációt? A régi Codex-thread lezárul, a runtime újraindul.')) return
+  setSettingsBusy(true, 'Visszaállítás és runtime-újraindítás…')
+  try {
+    await api('/v1/dashboard/agent-settings/restore', {
+      method: 'POST',
+      body: JSON.stringify({ actor, confirm: true }),
+    })
+    await refresh()
+    byId('settings-status').textContent = 'Az előző beállítás visszaállt.'
+    byId('settings-status').className = 'success'
+  } catch (error) {
+    setSettingsBusy(false, `Sikertelen: ${error.message}`)
+  }
 }
 
 byId('login-form').addEventListener('submit', async (event) => {
@@ -138,5 +217,7 @@ byId('approvals').addEventListener('click', (event) => {
   if (!button) return
   void decideApproval(button.dataset.id, button.dataset.decision)
 })
+byId('agent-settings-form').addEventListener('submit', (event) => void saveSettings(event))
+byId('restore-settings').addEventListener('click', () => void restoreSettings())
 
 if (state.token) refresh().catch(() => setConnected(false))

@@ -1,13 +1,13 @@
 {
   "name": "marveen-codex-bridge-federation",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=22 <23"
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test --test-concurrency=1 test/*.test.mjs",
     "verify": "bash scripts/verify-phase7.sh",
     "check": "node --check src/*.mjs && node --check web/app.js"
   },

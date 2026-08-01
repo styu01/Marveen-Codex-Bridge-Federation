@@ -2,6 +2,7 @@
 import { loadServiceConfig } from './config.mjs'
 import { loadRuntimeModule } from './runtime-loader.mjs'
 import { FederationBridgeService } from './service.mjs'
+import { AgentSettingsManager } from './agent-settings-manager.mjs'
 
 function log(level, event, fields = {}) {
   process.stdout.write(`${JSON.stringify({
@@ -26,11 +27,12 @@ const runtime = await loadRuntimeModule(runtimeModule, {
   },
 })
 
-const service = new FederationBridgeService({ config, runtime })
+const settingsManager = new AgentSettingsManager({ configPath, config, runtime })
+const service = new FederationBridgeService({ config, runtime, settingsManager })
 if (typeof runtime.start === 'function') await runtime.start()
 const endpoint = await service.start()
 log('info', 'service_started', {
-  bridgeVersion: '0.3.0',
+  bridgeVersion: '0.3.1',
   host: endpoint.host,
   port: endpoint.port,
   systemId: config.systemId,

@@ -1,4 +1,4 @@
-# Federation Bridge 0.3.0 üzemeltetés
+# Federation Bridge 0.3.1 üzemeltetés
 
 ## Állapotellenőrzés
 
@@ -7,7 +7,7 @@ systemctl --user is-active marveen-codex-bridge.service
 curl --fail --silent http://127.0.0.1:3431/readyz | python3 -m json.tool
 ```
 
-Elvárt verzió: `0.3.0`, `status: ready`, `database: true`, `runtime: true`.
+Elvárt verzió: `0.3.1`, `status: ready`, `database: true`, `runtime: true`.
 
 ## Konfiguráció
 
@@ -27,11 +27,20 @@ modell és effort az `agents` bejegyzésben állítható:
 }
 ```
 
-Módosítás után:
+A szerepkör és a négy támogatott effort a Bridge dashboardon szerkeszthető.
+A mentés atomi, előtte privát backup készül, utána a Bridge kontrolláltan
+újraindítja a Codex runtime-ot és érvényteleníti a korábbi threadet. Kézi
+`systemctl restart` nem szükséges.
 
-```bash
-systemctl --user restart marveen-codex-bridge.service
+A backupok és a tartalommentes auditnapló helye:
+
+```text
+~/.config/marveen-codex-bridge/agent-settings-history/
 ```
+
+Az API minden beállítási végpontja ugyanazt a szigorú admin bearer tokent
+követeli, mint a dashboard. Mentéshez és visszaállításhoz `confirm: true`,
+valamint egy nem üres módosítónév szükséges.
 
 ## Bridge-frissítés
 

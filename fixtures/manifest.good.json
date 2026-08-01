@@ -1,6 +1,6 @@
 {
   "system": "codex",
-  "marveenVersion": "bridge-0.3.0",
+  "marveenVersion": "bridge-0.3.1",
   "federationVersion": 1,
   "agents": [
     {

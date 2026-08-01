@@ -7,6 +7,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   readlinkSync,
   rmSync,
   symlinkSync,
@@ -77,14 +78,14 @@ exec /usr/bin/id "$@"
   const data = join(home, '.local/share/marveen-codex-bridge')
   const candidate = join(data, 'candidate')
   assert.equal(lstatSync(candidate).isSymbolicLink(), true)
-  assert.match(readlinkSync(candidate), /0\.3\.0$/)
+  assert.match(readlinkSync(candidate), /0\.3\.1$/)
   assert.equal(existsSync(join(data, 'current')), false)
   assert.equal(
     JSON.parse(readFileSync(join(
       data,
-      'releases/0.3.0/package.json',
+      'releases/0.3.1/package.json',
     ))).version,
-    '0.3.0',
+    '0.3.1',
   )
   const configRoot = join(home, '.config/marveen-codex-bridge')
   assert.equal(lstatSync(join(configRoot, 'config.json')).mode & 0o777, 0o600)
@@ -108,26 +109,65 @@ exec /usr/bin/id "$@"
   assert.doesNotMatch(unit, /bela-codex-bridge/)
   assert.match(
     unit,
-    /releases\/0\.3\.0\/src\/main\.mjs/,
+    /releases\/0\.3\.1\/src\/main\.mjs/,
   )
   assert.match(
     unit,
-    /MARVEEN_CODEX_BRIDGE_RUNTIME_MODULE=.*releases\/0\.3\.0\/src\/codex-runtime-module\.mjs/,
+    /MARVEEN_CODEX_BRIDGE_RUNTIME_MODULE=.*releases\/0\.3\.1\/src\/codex-runtime-module\.mjs/,
   )
   assert.match(
     unit,
-    /MARVEEN_CODEX_BRIDGE_BETTER_SQLITE3_PATH=.*releases\/0\.3\.0\/node_modules\/better-sqlite3/,
+    /MARVEEN_CODEX_BRIDGE_BETTER_SQLITE3_PATH=.*releases\/0\.3\.1\/node_modules\/better-sqlite3/,
   )
   assert.match(unit, /Environment=CODEX_HOME=.*\/\.codex/)
+  assert.match(unit, /ReadWritePaths=.*\/\.config\/marveen-codex-bridge/)
   assert.match(unit, /ReadWritePaths=.*\/\.codex/)
+  assert.match(unit, /ReadOnlyPaths=.*admin\.token.*marveen-inbound\.token.*marveen-outbound\.token/)
   assert.doesNotMatch(unit, /marveen-codex-bridge\/current/)
   const installer = readFileSync(resolve('scripts/install-phase7.sh'), 'utf8')
+  const verifier = readFileSync(resolve('scripts/verify-phase7.sh'), 'utf8')
+  assert.match(verifier, /--test-concurrency=1/)
   assert.ok(
     installer.indexOf('systemctl --user reset-failed marveen-codex-bridge.service')
       < installer.indexOf('systemctl --user restart marveen-codex-bridge.service'),
     'a prior failed release must not leave the activation start-limited',
   )
   assert.match(installer, /mv -f "\$\{UNIT_PATH\}\.rollback" "\$\{UNIT_PATH\}"/)
+  assert.match(
+    installer,
+    /mv -f "\$\{UNIT_PATH\}\.rollback" "\$\{UNIT_PATH\}"[\s\S]*reset-failed marveen-codex-bridge\.service[\s\S]*ROLLBACK_READY/,
+  )
+
+  const installedRelease = join(data, 'releases/0.3.1')
+  const staleMarker = join(installedRelease, 'STALE-CANDIDATE')
+  writeFileSync(staleMarker, 'must be replaced\n')
+  const replacement = spawnSync('bash', [
+    resolve('scripts/install-phase7.sh'),
+    '--node-bin', fakeNode,
+    '--codex-bin', fakeCodex,
+    '--prepare-only',
+    '--skip-dependencies',
+    '--skip-tests',
+  ], {
+    cwd: resolve('.'),
+    env: {
+      ...process.env,
+      HOME: home,
+      XDG_CONFIG_HOME: join(home, '.config'),
+      XDG_STATE_HOME: join(home, '.local/state'),
+      XDG_DATA_HOME: join(home, '.local/share'),
+      CODEX_HOME: join(home, '.codex'),
+      PATH: `${bin}:${process.env.PATH}`,
+    },
+    encoding: 'utf8',
+  })
+  assert.equal(replacement.status, 0, `${replacement.stdout}\n${replacement.stderr}`)
+  assert.match(replacement.stdout, /Superseded inactive release retained at:/)
+  assert.equal(existsSync(staleMarker), false)
+  assert.ok(
+    readdirSync(join(data, 'releases'))
+      .some((name) => name.startsWith('.0.3.1.superseded.')),
+  )
 })
 
 test('Phase 7 dependency lifecycle PATH is pinned to the selected Node 22 bin', (t) => {

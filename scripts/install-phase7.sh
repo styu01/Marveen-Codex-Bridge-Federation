@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="0.3.0"
+VERSION="0.3.1"
 SOURCE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 NODE_BIN=""
 CODEX_BIN=""
@@ -126,6 +126,22 @@ if [[ -e "${RELEASE_ROOT}" ]]; then
     "${RELEASE_ROOT}/package.json")"
   [[ "${INSTALLED_VERSION}" == "${VERSION}" ]] \
     || { echo "Existing release has the wrong version" >&2; exit 1; }
+  ACTIVE_TARGET=""
+  if [[ -L "${CURRENT_LINK}" ]]; then
+    ACTIVE_TARGET="$(readlink -f -- "${CURRENT_LINK}")"
+  fi
+  [[ "${ACTIVE_TARGET}" != "${RELEASE_ROOT}" ]] \
+    || { echo "Refusing to replace the active ${VERSION} release" >&2; exit 1; }
+  SUPERSEDED_ROOT="${RELEASES_ROOT}/.${VERSION}.superseded.$(date -u +%Y%m%dT%H%M%SZ)-$$"
+  mv -- "${RELEASE_ROOT}" "${SUPERSEDED_ROOT}"
+  if mv -- "${STAGE}" "${RELEASE_ROOT}"; then
+    STAGE=""
+    echo "Superseded inactive release retained at: ${SUPERSEDED_ROOT}"
+  else
+    mv -- "${SUPERSEDED_ROOT}" "${RELEASE_ROOT}"
+    echo "Failed to replace inactive release; original restored" >&2
+    exit 1
+  fi
 else
   chmod -R go-rwx "${STAGE}"
   mv -- "${STAGE}" "${RELEASE_ROOT}"
@@ -211,7 +227,7 @@ const config = JSON.parse(readFileSync(configPath, 'utf8'))
 const agent = config.agents?.find((entry) => entry?.id === 'programozo')
 if (agent && (!agent.developerInstructions || agent.developerInstructions.trim() === '')) {
   agent.developerInstructions = readFileSync(instructionsPath, 'utf8')
-  const temporary = `${configPath}.0.3.0.tmp`
+  const temporary = `${configPath}.0.3.1.tmp`
   writeFileSync(temporary, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 })
   chmodSync(temporary, 0o600)
   renameSync(temporary, configPath)
@@ -256,6 +272,7 @@ render_unit() {
     -e "s|@NODE_BIN@|${NODE_REAL}|g" \
     -e "s|@RELEASE_ROOT@|${target}|g" \
     -e "s|@CONFIG_PATH@|${CONFIG_PATH}|g" \
+    -e "s|@CONFIG_ROOT@|${CONFIG_ROOT}|g" \
     -e "s|@BETTER_SQLITE3_PATH@|${target}/node_modules/better-sqlite3|g" \
     -e "s|@STATE_ROOT@|${STATE_ROOT}|g" \
     -e "s|@DATA_ROOT@|${DATA_ROOT}|g" \
@@ -320,7 +337,19 @@ if [[ "${READY}" -ne 1 ]]; then
     mv -Tf "${CURRENT_LINK}.new" "${CURRENT_LINK}"
     mv -f "${UNIT_PATH}.rollback" "${UNIT_PATH}"
     systemctl --user daemon-reload
+    systemctl --user reset-failed marveen-codex-bridge.service 2>/dev/null || true
     systemctl --user restart marveen-codex-bridge.service || true
+    ROLLBACK_READY=0
+    for _ in {1..45}; do
+      if curl --silent --fail http://127.0.0.1:3431/readyz \
+        | grep -q '"status":"ready"'; then
+        ROLLBACK_READY=1
+        break
+      fi
+      sleep 2
+    done
+    [[ "${ROLLBACK_READY}" -eq 1 ]] \
+      || echo "ROLLBACK FAILED: previous Bridge did not become ready" >&2
   fi
   exit 1
 fi

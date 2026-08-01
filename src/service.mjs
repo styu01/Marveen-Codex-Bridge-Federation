@@ -11,7 +11,7 @@ import { FederationInboxOrchestrator } from './inbox-orchestrator.mjs'
 import { FederationOutboxWorker } from './outbox-delivery.mjs'
 import { publicConfig } from './config.mjs'
 
-const BRIDGE_VERSION = '0.3.0'
+const BRIDGE_VERSION = '0.3.1'
 const DASHBOARD_FILES = new Map([
   ['/dashboard', ['text/html; charset=utf-8', readFileSync(new URL('../web/index.html', import.meta.url))]],
   ['/dashboard/', ['text/html; charset=utf-8', readFileSync(new URL('../web/index.html', import.meta.url))]],
@@ -113,11 +113,13 @@ export class FederationBridgeService {
     fetchImpl = fetch,
     clock = Date.now,
     autoWorkers = true,
+    settingsManager = null,
   }) {
     if (!config) throw new TypeError('config is required')
     if (!runtime) throw new TypeError('runtime is required')
     this.config = config
     this.runtime = runtime
+    this.settingsManager = settingsManager
     this.autoWorkers = autoWorkers
     this.store = new FederationDurabilityStore(config.storage.database, {
       clock,
@@ -334,6 +336,57 @@ export class FederationBridgeService {
             inventoryErrors,
           },
         })
+        return
+      }
+      if (method === 'GET' && url.pathname === '/v1/dashboard/agent-settings') {
+        if (!this.settingsManager) {
+          send(response, 501, { error: 'agent_settings_unavailable' })
+          return
+        }
+        send(response, 200, { data: this.settingsManager.current() })
+        return
+      }
+      if (method === 'GET' && url.pathname === '/v1/dashboard/agent-settings/audit') {
+        if (!this.settingsManager) {
+          send(response, 501, { error: 'agent_settings_unavailable' })
+          return
+        }
+        const limit = Number.parseInt(url.searchParams.get('limit') ?? '100', 10)
+        send(response, 200, {
+          data: this.settingsManager.audit(Number.isSafeInteger(limit) ? limit : 100),
+        })
+        return
+      }
+      if (method === 'PUT' && url.pathname === '/v1/dashboard/agent-settings') {
+        if (!this.settingsManager) {
+          send(response, 501, { error: 'agent_settings_unavailable' })
+          return
+        }
+        try {
+          const result = await this.settingsManager.update(await readJson(request))
+          send(response, 200, { data: result })
+        } catch (error) {
+          send(response, Number.isInteger(error?.status) ? error.status : 500, {
+            error: error?.code ?? 'agent_settings_failed',
+            message: error?.message ?? 'Agent settings update failed',
+          })
+        }
+        return
+      }
+      if (method === 'POST' && url.pathname === '/v1/dashboard/agent-settings/restore') {
+        if (!this.settingsManager) {
+          send(response, 501, { error: 'agent_settings_unavailable' })
+          return
+        }
+        try {
+          const result = await this.settingsManager.restore(await readJson(request))
+          send(response, 200, { data: result })
+        } catch (error) {
+          send(response, Number.isInteger(error?.status) ? error.status : 500, {
+            error: error?.code ?? 'agent_settings_restore_failed',
+            message: error?.message ?? 'Agent settings restore failed',
+          })
+        }
         return
       }
       if (method === 'GET' && url.pathname === '/v1/runs') {

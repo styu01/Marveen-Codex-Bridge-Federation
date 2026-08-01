@@ -358,6 +358,52 @@ export class CodexAppServerRuntime {
     this.approvals?.shutdown()
   }
 
+  async reconfigureAgent(nextAgent) {
+    if (!nextAgent || typeof nextAgent !== 'object' || !this.agents.has(nextAgent.id)) {
+      throw errorWithCode('agent_not_found', 'Configured Codex agent was not found')
+    }
+    if (this.activeAgents.size > 0 || this.activeByThread.size > 0) {
+      const error = errorWithCode(
+        'runtime_busy',
+        'Agent settings cannot change while a Codex turn is active',
+      )
+      error.status = 409
+      throw error
+    }
+    const pendingApprovals = this.approvals?.list({ state: 'pending' }) ?? []
+    if (pendingApprovals.length > 0) {
+      const error = errorWithCode(
+        'approval_pending',
+        'Agent settings cannot change while an approval is pending',
+      )
+      error.status = 409
+      throw error
+    }
+
+    const previousAgent = { ...this.agents.get(nextAgent.id) }
+    if (this.state) this.state.invalidateThread(nextAgent.id)
+    await this.stop()
+    this.agents.set(nextAgent.id, { ...nextAgent })
+    this.config.agents = [...this.agents.values()]
+    try {
+      await this.start()
+    } catch (error) {
+      this.agents.set(previousAgent.id, previousAgent)
+      this.config.agents = [...this.agents.values()]
+      try {
+        await this.start()
+      } catch (rollbackError) {
+        error.rollbackError = rollbackError
+      }
+      throw error
+    }
+    this.onEvent('agent_settings_reconfigured', {
+      agentId: nextAgent.id,
+      generation: this.generation,
+    })
+    return { agentId: nextAgent.id, generation: this.generation }
+  }
+
   listApprovals(query = {}) {
     if (!this.approvals) throw errorWithCode('runtime_unavailable', 'Codex runtime is not ready')
     return this.approvals.list(query)

@@ -42,6 +42,44 @@
         <div id="agents"></div>
       </section>
 
+      <section class="panel settings-panel">
+        <div class="section-heading">
+          <div>
+            <h2>Agent szerepkör és effort</h2>
+            <p class="muted">A mentés lezárja a régi Codex-threadet, majd kontrolláltan újraindítja a runtime-ot.</p>
+          </div>
+          <button id="restore-settings" class="secondary" type="button" disabled>Előző beállítás visszaállítása</button>
+        </div>
+        <form id="agent-settings-form">
+          <div class="settings-meta" id="settings-current"></div>
+          <label for="settings-actor">Módosító neve</label>
+          <input id="settings-actor" name="actor" maxlength="80" autocomplete="name" required>
+          <label for="settings-effort">Reasoning effort</label>
+          <select id="settings-effort" name="reasoningEffort" required>
+            <option value="low">low</option>
+            <option value="medium">medium</option>
+            <option value="high">high</option>
+            <option value="xhigh">xhigh</option>
+          </select>
+          <label for="settings-role">Developer instructions (szerepkör)</label>
+          <textarea id="settings-role" name="developerInstructions" rows="14" maxlength="102400" required></textarea>
+          <div class="form-actions">
+            <button id="save-settings" type="submit">Módosítás mentése</button>
+            <span id="settings-status" class="muted" aria-live="polite"></span>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2>Beállítási auditnapló</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Idő</th><th>Ki</th><th>Művelet</th><th>Effort</th><th>Eredmény</th></tr></thead>
+            <tbody id="settings-audit"></tbody>
+          </table>
+        </div>
+      </section>
+
       <section class="panel">
         <h2>Függő jóváhagyások</h2>
         <div id="approvals"></div>

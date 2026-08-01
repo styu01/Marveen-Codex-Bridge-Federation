@@ -37,7 +37,7 @@ Kötelező válaszmezők:
 ```json
 {
   "system": "codex",
-  "marveenVersion": "bridge-0.3.0",
+  "marveenVersion": "bridge-0.3.1",
   "federationVersion": 1,
   "agents": [],
   "skills": []
@@ -75,7 +75,7 @@ Korlátok:
 - `to` helyi, minősítés nélküli agent ID;
 - `content` nem lehet üres;
 - `ref` opcionális, maximum 128 karakter;
-- a Bridge 0.3.0 megköveteli a `federationVersion: 1` értéket.
+- a Bridge 0.3.x megköveteli a `federationVersion: 1` értéket.
 
 Siker:
 

@@ -84,6 +84,39 @@ Dátum: 2026-07-30
 - peer-konfiguráció visszaállítása sikertelen cutover esetén: PASS;
 - célzott új és módosított tesztek: 14/14 PASS.
 
-A teljes 117/117 tesztet a kiadási csomagból, Node 22.23.1 és az ahhoz
-fordított production `better-sqlite3` modul alatt kell lefuttatni. Új éles
-`--execute` cutover addig nem engedélyezett.
+A 0.3.0 kapu lezárásakor előírt teljes, natív ellenőrzést a 0.3.1 kiadási
+jelöltből, Node 22.23.1 és az ahhoz fordított production `better-sqlite3`
+modullal sikeresen lefuttattuk; az eredményeket a következő szakasz rögzíti.
+
+## 0.3.1 szerepkör- és effort-kezelési kapu
+
+Dátum: 2026-08-01
+
+- szerepkör és `low`/`medium`/`high`/`xhigh` effort validáció: PASS;
+- megerősítéshez kötött, admin-tokenes konfigurációs API: PASS;
+- atomi mentés, privát biztonsági másolat és auditnapló: PASS;
+- kontrollált runtime-újraindítás és régi Codex-thread érvénytelenítése: PASS;
+- előző beállítás visszaállítása és sikertelen restart rollbackje: PASS;
+- korlátozott memóriájú géphez soros teljes tesztkapu: PASS;
+- systemd sandbox írható konfiguráció/history útvonal és read-only tokenvédelem:
+  PASS;
+- sikertelen aktiválás utáni start-limit nullázás és rollback-readiness kapu:
+  PASS;
+- azonos verziójú inaktív candidate atomikus cseréje, régi jelölt megtartásával:
+  PASS;
+- célzott installer regresszió: 3/3 PASS;
+- teljes, natív Node 22.23.1 kapu: 124/124 PASS, skip/fail/cancel: 0;
+- valódi Codex App Server, thread-folytatás és idempotencia: PASS;
+- valódi approve/decline approval broker: PASS;
+- valódi Federation dinamikus tool és GPT-image artifact: PASS;
+- élő szerepkör- és effort-módosítás, kontrollált runtime-újraindítás,
+  pontos visszaállítás és auditnapló: PASS;
+- végső élő Béla → Codex → Béla canary: PASS (`messageId=352`,
+  `replyId=353`, marker:
+  `FEDERATION_V031_FINAL_20260801T110328Z_OK`);
+- production szolgáltatásállapot: dashboard `active`, legacy Bridge `inactive`,
+  Federation Bridge `active`;
+- production readiness: `status=ready`, `bridgeVersion=0.3.1`,
+  `database=true`, `runtime=true`.
+
+RESULT: 0.3.1 RELEASE GATE PASS.

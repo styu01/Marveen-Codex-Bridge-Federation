@@ -291,6 +291,7 @@ test('cutover script keeps rollback and independence invariants', () => {
     installer,
     /s\|@BETTER_SQLITE3_PATH@\|\$\{target\}\/node_modules\/better-sqlite3\|g/,
   )
+  assert.match(installer, /s\|@CONFIG_ROOT@\|\$\{CONFIG_ROOT\}\|g/)
   assert.match(installer, /render_unit "\$\{RELEASE_ROOT\}" "\$\{UNIT_PATH\}\.candidate"/)
   assert.match(installer, /systemctl --user restart marveen-codex-bridge\.service/)
   assert.match(installer, /mv -f "\$\{UNIT_PATH\}\.rollback" "\$\{UNIT_PATH\}"/)
@@ -311,9 +312,9 @@ test('cutover script keeps rollback and independence invariants', () => {
     source,
     /\b(?:sed|perl|python3?)\b[^\n]*src\/web\/|web\/app\.js.*replace/,
   )
-  assert.match(verifier, /tests 117\$/)
-  assert.match(verifier, /pass 117\$/)
-  assert.match(verifier, /all 117 Phase 1-7/)
+  assert.match(verifier, /tests 124\$/)
+  assert.match(verifier, /pass 124\$/)
+  assert.match(verifier, /all 124 Phase 1-7/)
   assert.doesNotMatch(verifier, /expected exactly 105/)
 })
 

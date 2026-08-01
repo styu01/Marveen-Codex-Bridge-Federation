@@ -158,6 +158,7 @@ async function startService(t, options = {}) {
     runtime: codexRuntime,
     driver: 'builtin',
     autoWorkers: options.autoWorkers ?? false,
+    settingsManager: options.settingsManager ?? null,
   })
   const endpoint = await service.start()
   t.after(async () => {
@@ -206,6 +207,76 @@ test('complete Marveen -> Codex -> Marveen E2E succeeds exactly once', async (t)
   )
 })
 
+test('agent settings API is admin-only and requires explicit confirmation', async (t) => {
+  const calls = []
+  const settingsManager = {
+    current: () => ({
+      agentId: 'programozo',
+      displayName: 'Codex programozó',
+      model: 'gpt-5.6-terra',
+      developerInstructions: 'Aktuális szerepkör.',
+      reasoningEffort: 'high',
+      canRestore: true,
+    }),
+    audit: () => [{ actor: 'Istvan', action: 'update', outcome: 'succeeded' }],
+    async update(payload) {
+      calls.push(['update', payload])
+      if (payload.confirm !== true) {
+        throw Object.assign(new Error('confirm must be true'), {
+          code: 'confirmation_required',
+          status: 409,
+        })
+      }
+      return { settings: this.current() }
+    },
+    async restore(payload) {
+      calls.push(['restore', payload])
+      return { settings: this.current() }
+    },
+  }
+  const env = await startService(t, { settingsManager })
+  const path = '/v1/dashboard/agent-settings'
+  assert.equal((await jsonRequest(env.endpoint.baseUrl, path)).status, 401)
+  assert.equal((await jsonRequest(env.endpoint.baseUrl, path, {
+    token: INBOUND_TOKEN,
+  })).status, 401)
+  const current = await jsonRequest(env.endpoint.baseUrl, path, { token: ADMIN_TOKEN })
+  assert.equal(current.status, 200)
+  assert.equal(current.body.data.developerInstructions, 'Aktuális szerepkör.')
+
+  const unconfirmed = await jsonRequest(env.endpoint.baseUrl, path, {
+    method: 'PUT',
+    token: ADMIN_TOKEN,
+    body: { actor: 'Istvan', developerInstructions: 'Új szerep.', reasoningEffort: 'xhigh' },
+  })
+  assert.equal(unconfirmed.status, 409)
+  assert.equal(unconfirmed.body.error, 'confirmation_required')
+
+  const updated = await jsonRequest(env.endpoint.baseUrl, path, {
+    method: 'PUT',
+    token: ADMIN_TOKEN,
+    body: { actor: 'Istvan', developerInstructions: 'Új szerep.', reasoningEffort: 'xhigh', confirm: true },
+  })
+  assert.equal(updated.status, 200)
+  assert.equal(calls.at(-1)[0], 'update')
+
+  const audit = await jsonRequest(
+    env.endpoint.baseUrl,
+    `${path}/audit`,
+    { token: ADMIN_TOKEN },
+  )
+  assert.equal(audit.status, 200)
+  assert.equal(audit.body.data[0].actor, 'Istvan')
+
+  const restored = await jsonRequest(env.endpoint.baseUrl, `${path}/restore`, {
+    method: 'POST',
+    token: ADMIN_TOKEN,
+    body: { actor: 'Istvan', confirm: true },
+  })
+  assert.equal(restored.status, 200)
+  assert.equal(calls.at(-1)[0], 'restore')
+})
+
 test('health is public, admin and Federation authentication are isolated', async (t) => {
   const env = await startService(t)
   assert.equal((await jsonRequest(env.endpoint.baseUrl, '/healthz')).status, 200)
@@ -238,6 +309,10 @@ test('standalone dashboard is static, hardened and admin API remains authenticat
   const script = await textRequest(env.endpoint.baseUrl, '/dashboard/app.js')
   assert.match(script.body, /reasoningEffort/)
   assert.match(dashboard.body, /<th>Effort<\/th>/)
+  assert.match(dashboard.body, /Developer instructions/)
+  assert.match(dashboard.body, /Előző beállítás visszaállítása/)
+  assert.match(script.body, /\/v1\/dashboard\/agent-settings/)
+  assert.match(script.body, /window\.confirm/)
   assert.equal(script.status, 200)
   assert.match(script.headers.get('content-type'), /^text\/javascript/)
   assert.match(script.body, /sessionStorage/)
@@ -252,7 +327,7 @@ test('standalone dashboard is static, hardened and admin API remains authenticat
     { token: ADMIN_TOKEN },
   )
   assert.equal(summary.status, 200)
-  assert.equal(summary.body.data.bridgeVersion, '0.3.0')
+  assert.equal(summary.body.data.bridgeVersion, '0.3.1')
   assert.equal(summary.body.data.readiness.ready, true)
   assert.equal(summary.body.data.agents[0].id, 'programozo')
 
