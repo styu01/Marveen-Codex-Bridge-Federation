@@ -214,6 +214,7 @@ test('agent settings API is admin-only and requires explicit confirmation', asyn
       agentId: 'programozo',
       displayName: 'Codex programozó',
       model: 'gpt-5.6-terra',
+      selectableModels: ['gpt-5.6-terra', 'gpt-5.6-sol'],
       developerInstructions: 'Aktuális szerepkör.',
       reasoningEffort: 'high',
       canRestore: true,
@@ -243,11 +244,12 @@ test('agent settings API is admin-only and requires explicit confirmation', asyn
   const current = await jsonRequest(env.endpoint.baseUrl, path, { token: ADMIN_TOKEN })
   assert.equal(current.status, 200)
   assert.equal(current.body.data.developerInstructions, 'Aktuális szerepkör.')
+  assert.deepEqual(current.body.data.selectableModels, ['gpt-5.6-terra', 'gpt-5.6-sol'])
 
   const unconfirmed = await jsonRequest(env.endpoint.baseUrl, path, {
     method: 'PUT',
     token: ADMIN_TOKEN,
-    body: { actor: 'Istvan', developerInstructions: 'Új szerep.', reasoningEffort: 'xhigh' },
+    body: { actor: 'Istvan', model: 'gpt-5.6-sol', developerInstructions: 'Új szerep.', reasoningEffort: 'xhigh' },
   })
   assert.equal(unconfirmed.status, 409)
   assert.equal(unconfirmed.body.error, 'confirmation_required')
@@ -255,7 +257,7 @@ test('agent settings API is admin-only and requires explicit confirmation', asyn
   const updated = await jsonRequest(env.endpoint.baseUrl, path, {
     method: 'PUT',
     token: ADMIN_TOKEN,
-    body: { actor: 'Istvan', developerInstructions: 'Új szerep.', reasoningEffort: 'xhigh', confirm: true },
+    body: { actor: 'Istvan', model: 'gpt-5.6-sol', developerInstructions: 'Új szerep.', reasoningEffort: 'xhigh', confirm: true },
   })
   assert.equal(updated.status, 200)
   assert.equal(calls.at(-1)[0], 'update')
@@ -308,6 +310,8 @@ test('standalone dashboard is static, hardened and admin API remains authenticat
 
   const script = await textRequest(env.endpoint.baseUrl, '/dashboard/app.js')
   assert.match(script.body, /reasoningEffort/)
+  assert.match(dashboard.body, /id="settings-model"/)
+  assert.match(script.body, /selectableModels/)
   assert.match(dashboard.body, /<th>Effort<\/th>/)
   assert.match(dashboard.body, /Developer instructions/)
   assert.match(dashboard.body, /Előző beállítás visszaállítása/)

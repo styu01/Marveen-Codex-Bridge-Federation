@@ -30,20 +30,22 @@ integrációt, vagy egy Bridge-frissítés módosítja a Béla rendszer forrás�
 
 | Elem | Validált érték |
 |---|---|
-| Bridge | `0.3.2` |
+| Stabil production Bridge | `0.3.1` |
+| Fejlesztési jelölt | `0.3.2` – draft PR, production canary előtt |
 | Marveen baseline | `1.25.1`, Federation v1 |
 | Node.js | `22.23.1` |
 | Codex CLI | `0.145.0` |
-| Codex modell | `gpt-5.6-terra` |
+| Codex modell | `gpt-5.6-terra` production; `gpt-5.6-sol` valós izolált preflight PASS |
 | Képmodell | `gpt-image-2` |
 | Reasoning effort | `low`, `medium`, `high`, `xhigh` |
 | Federation mód | productionben validált `advisory` |
-| Automatizált teszt | `124/124 PASS`, skip/fail/cancel: `0` |
-| Élő canary | Béla → Codex → Béla PASS |
+| 0.3.2 automatizált teszt | `127/127 PASS`, skip/fail/cancel: `0` |
+| Élő production canary | 0.3.1: Béla → Codex → Béla PASS; 0.3.2: még nyitott |
 
-A production szolgáltatás a kiadás lezárásakor `ready` állapotú volt,
+A 0.3.1 production szolgáltatás a kiadás lezárásakor `ready` állapotú volt,
 `database: true` és `runtime: true` jelzéssel. A régi Bridge leállítva, az új
-Federation Bridge aktív maradt.
+Federation Bridge aktív maradt. A 0.3.2 csak a végső WSL production canary
+után merge-elhető és tagelhető.
 
 ## Fő képességek
 
@@ -104,12 +106,18 @@ Fontos: a kijelölt workspace-en belüli, sandbox által megengedett fájlírás
 feltétlenül generál külön approvalt. A broker nem helyettesíti a Codex saját
 sandboxát, hanem azzal együtt működik.
 
-### Szerepkör- és effort-kezelés
+### Modell-, szerepkör- és effort-kezelés
 
 A 0.3.2-ben az admin dashboardon módosítható az egyetlen `programozo` agent:
 
 - teljes `developerInstructions` szerepköre;
+- Codex modellje: `gpt-5.6-terra` vagy `gpt-5.6-sol`;
 - reasoning effortja: `low`, `medium`, `high` vagy `xhigh`.
+
+A dashboardon megjelenő modelllista nem statikus klienslista. A szerver az
+explicit `codex.allowedModels` engedélylista és az élő Codex App Server
+`model/list` válaszának metszetét adja vissza. A kliens által beküldött
+tetszőleges modellnév nem menthető el.
 
 A szerepkör minden új Codex-thread fejlesztői utasításának része, ezért ez
 határozza meg az agent szakmai fókuszát és működési kereteit. Nem egyszerű
@@ -119,6 +127,8 @@ A beállításváltás védelmei:
 
 - aktuális értékek megjelenítése;
 - üres vagy hibás szerepkör elutasítása;
+- allowlisten kívüli vagy a Codex-fiókban nem elérhető modell elutasítása még
+  backup, fájlírás és runtime-leállítás előtt;
 - kizárólag a négy támogatott effort fogadható el;
 - kötelező vizuális megerősítés;
 - kötelező admin bearer token;
@@ -126,10 +136,16 @@ A beállításváltás védelmei:
 - atomi konfigurációcsere;
 - módosítás előtti privát biztonsági másolat;
 - kontrollált Codex runtime-újraindítás;
-- a régi thread érvénytelenítése, hogy ne maradjon kevert konfiguráció;
+- readiness ellenőrzés az új konfigurációval;
+- a régi thread érvénytelenítése csak sikeres restart és readiness után, hogy
+  ne maradjon kevert konfiguráció;
 - visszaállítás az előző konfigurációra;
-- sikertelen restart esetén automatikus konfiguráció-rollback;
-- auditnapló: módosító, időpont, művelet és előtte/utána hash.
+- sikertelen restart esetén automatikus konfiguráció-rollback, az előző modell
+  és thread megtartásával;
+- ha az előző runtime sem állítható vissza, külön `runtime_rollback_failed`
+  503-as hiba és auditjelzés készül; ezt nem jelenti ártalmatlan rollbackként;
+- auditnapló: módosító, időpont, művelet, modell- és effort-változás, valamint
+  a szerepkör előtte/utána hash-e.
 
 Az auditnapló szándékosan nem tárolja el ismét a teljes szerepkörszöveget.
 
@@ -147,7 +163,7 @@ A dashboard megjeleníti:
 - inbox és dead outbox darabszám;
 - függő approvalok;
 - legutóbbi Codex-runok és állapotuk;
-- agentnév, modell és aktuális reasoning effort;
+- agentnév, szerveroldalon validált modellválasztó és aktuális reasoning effort;
 - aktuális developerInstructions;
 - beállításváltozások auditnaplója;
 - az előző agentbeállítás visszaállításának lehetősége.

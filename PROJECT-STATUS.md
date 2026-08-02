@@ -4,7 +4,7 @@
 
 **Aktuális stabil kiadás:** `0.3.1`
 
-**Aktuális fejlesztési jelölt:** `0.3.2` – Sol production kapu előtt
+**Aktuális fejlesztési jelölt:** `0.3.2` – modellválasztó kész, WSL production canary előtt
 
 **Elsődleges, bizonyított célplatform:** Linux / WSL2, systemd user service
 
@@ -311,20 +311,27 @@ A pontos 0.3.1 baseline archívumon a Node 22.23.1 Phase 7 mock kapu
 rollback-teszttel bővített kapuja `125/125 PASS`. Ez nem Sol- és nem
 production bizonyíték.
 
-## 7. Nyitott feladat: `gpt-5.6-sol` validálása
+## 7. `gpt-5.6-sol` validálás és biztonságos modellválasztás
 
 ### 7.1 Jelenlegi tény
 
 A stabil `0.3.1` production kapu `gpt-5.6-terra` modellel futott le. A
-`gpt-5.6-sol` Bridge-en keresztüli működése nincs lezárt, dokumentált
-production teszttel bizonyítva. Emiatt a Sol modell nem jelenhet meg
-„támogatottként” csak azért, mert a Codex más felületen vagy közvetlen CLI-ből
-elérhető.
+`0.3.2` pre-Sol jelölt (`15bd74c1eb1a4d938cf38551636359051dac4c65`)
+izolált, bejelentkezett WSL-környezetben 2026-08-02-án sikeresen teljesítette a
+valós `gpt-5.6-sol` Phase 7 kaput, beleértve a szöveges runtime-, approval-,
+Federation- és `gpt-image-2` artifact-folyamatot. A záró eredmény:
 
-### 7.2 Kötelező Sol-tesztkapu
+```text
+RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION AND IMAGEGEN PASS
+```
 
-A következő fejlesztőnek az aktuális, bejelentkezett WSL production-kompatibilis
-környezetben kell ellenőriznie legalább:
+Ez hiteles Sol preflight, de nem azonos az éles systemd service és a Marveen
+1.28.1 ellen futó végső production canaryval. Az továbbra is release-kapu.
+
+### 7.2 Sol-tesztkapu és fennmaradó production ellenőrzés
+
+A valós preflight a következő providerfüggő útvonalakat ellenőrizte; a
+modellváltási tranzakciót a 0.3.2 jelölt regressziós kapuja külön bizonyítja:
 
 1. a Codex App Server `model/list` valóban visszaadja a `gpt-5.6-sol` modellt;
 2. a Bridge induláskori modellvalidációja elfogadja;
@@ -336,32 +343,34 @@ környezetben kell ellenőriznie legalább:
 8. approvalt igénylő művelet approve és decline ága működik;
 9. reasoning effort kompatibilitás külön ellenőrzött;
 10. runtime restart után a konfiguráció és a routing helyes;
-11. sikertelen modellváltás automatikusan visszaállítja a régi működő modellt;
-12. teljes regressziós teszt és Federation canary PASS.
+11. sikertelen modellváltás automatikusan visszaállítja a régi működő modellt
+    és nem érvényteleníti a régi threadet;
+12. teljes regressziós teszt PASS.
 
 A repository jelenlegi valós preflightja paraméterezhető modellel. A támogatott
 belépési pont a `scripts/verify-phase7.sh --model ...`. A
 `verify-phase2.sh`, `verify-phase3.sh`, `verify-phase4.sh` és
 `verify-phase5.sh` történeti kapuk, ezért a jelenlegi ágon deprecation hibával
-leállnak. A production konfigurációváltást és rollbacket külön is ellenőrizni
-kell.
+leállnak. A release előtt még az éles service-en kell bizonyítani a
+Terra → Sol → Terra modellváltást, a readiness állapotot, az auditot, az
+automatikus rollbacket és a Marveen 1.28.1 Federation canaryját.
 
-### 7.3 Modellválasztó termékdöntés
+### 7.3 Implementált modellválasztási szerződés
 
-Ha a Sol teljes kapuja PASS:
-
-- a dashboardon agentenként választható modell lehet;
-- a szerveroldal kizárólag az aktuális App Server `model/list` és egy explicit
-  engedélylista metszetét fogadhatja el;
-- tetszőleges kliens által küldött modellnév nem menthető el;
-- modellváltás ugyanazt az atomi backup/restart/rollback/audit folyamatot kapja,
-  mint a szerepkör- és effort-váltás;
-- a futó agent modelljét nem szabad csak UI-ban átírni;
-- a modellváltás régi threadje nem folytatható az új modellel.
-
-Ha a Sol kapu FAIL, nem szabad kerülőúttal vagy ellenőrzés kikapcsolásával
-engedélyezni. A hibát dokumentálni kell, a stabil Terra beállítást pedig meg
-kell tartani.
+- A konfiguráció explicit allowlistája: `gpt-5.6-terra`, `gpt-5.6-sol`.
+- A dashboard kizárólag az allowlista és az aktuális App Server `model/list`
+  metszetét jeleníti meg.
+- A szerver mentés előtt ismét ellenőrzi a modell nevét, az allowlistát és az
+  aktuális fiókbeli elérhetőséget.
+- Ismeretlen vagy nem elérhető modell még backup, konfigurációírás,
+  runtime-leállítás és thread-érvénytelenítés előtt fail-closed hibát ad.
+- A restart újra lekéri a `model/list` választ; ez a második validációs kapu.
+- Modellváltáskor atomi backup, privát konfigurációírás, audit, runtime restart,
+  readiness és automatikus rollback fut.
+- A régi thread csak sikeres restart után érvénytelenedik. Sikertelen váltásnál
+  az előző modell és thread megmarad.
+- Az audit a modell és effort előtte/utána értékét, valamint a szerepkör hashét
+  tárolja; a teljes szerepkörszöveget nem duplikálja.
 
 ## 8. Következő nagy fejlesztés: maximum három külön Codex-agent
 
@@ -615,9 +624,10 @@ vagy amelyet más platformon/modellen futtattak.
 5. Settings backup/restart/rollback/audit kiterjesztése modellre.
 6. Teljes regresszió, WSL production canary és release.
 
-Aktuális állapot: az 1–2. pont és a verifikációs scriptek rendezése elkészült.
-A 3. pont valós, bejelentkezett WSL-környezetet igényel. A modellválasztó
-szándékosan nincs implementálva addig, amíg ez a kapu nem PASS.
+Aktuális állapot: az 1–5. pont elkészült, a valós Sol preflight PASS, a
+modellválasztó regressziós kapuja Node 22.23.1 alatt PASS. A 6. pontból az éles
+WSL systemd production canary és a Marveen 1.28.1 kompatibilitási canary még
+nyitott; ezek nélkül a 0.3.2 nem merge-elhető és nem tagelhető release-ként.
 
 ### Fázis C – többagentes specifikáció
 

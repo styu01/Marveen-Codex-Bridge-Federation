@@ -177,6 +177,7 @@ elif [[ ! -f "${CONFIG_PATH}" ]]; then
     "binary": "${CODEX_REAL}",
     "expectedVersion": "0.145.0",
     "runtimeRoot": "${RUNTIME_ROOT}",
+    "allowedModels": ["gpt-5.6-terra", "gpt-5.6-sol"],
     "imageGenerationRequired": true,
     "imageModel": "gpt-image-2"
   },

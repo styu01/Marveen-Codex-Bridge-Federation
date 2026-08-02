@@ -90,6 +90,7 @@ exec /usr/bin/id "$@"
   const configRoot = join(home, '.config/marveen-codex-bridge')
   assert.equal(lstatSync(join(configRoot, 'config.json')).mode & 0o777, 0o600)
   const installedConfig = JSON.parse(readFileSync(join(configRoot, 'config.json'), 'utf8'))
+  assert.deepEqual(installedConfig.codex.allowedModels, ['gpt-5.6-terra', 'gpt-5.6-sol'])
   assert.equal(installedConfig.agents[0].reasoningEffort, 'high')
   assert.match(installedConfig.agents[0].developerInstructions, /Codex programozó/)
   assert.match(installedConfig.agents[0].developerInstructions, /marveen_agent_message_send/)

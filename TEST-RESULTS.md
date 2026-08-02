@@ -145,3 +145,30 @@ service restart/rollback és a WSL production canary még nyitott. Ezért ez nem
 0.3.2 release PASS.
 
 RESULT: 0.3.2 PRE-SOL MOCK GATE PASS (REAL CODEX NOT RUN).
+
+## 0.3.2 Sol preflight és modellválasztó regresszió
+
+Dátum: 2026-08-02
+
+- a `15bd74c1eb1a4d938cf38551636359051dac4c65` pre-Sol commit izolált WSL
+  könyvtárból, valós Codex `0.145.0` és `gpt-5.6-sol` modellel futott: PASS;
+- valós szöveges Codex runtime, thread-folytatás, approval, Federation és
+  `gpt-image-2` artifact-folyamat: PASS;
+- záró valós kapu: `RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION AND
+  IMAGEGEN PASS`;
+- explicit `codex.allowedModels` validáció: PASS;
+- allowlist és élő `model/list` metszetének szerveroldali előállítása: PASS;
+- tetszőleges és fiókban nem elérhető modell elutasítása konfigurációírás előtt:
+  PASS;
+- modellváltás backup, audit, runtime restart és readiness útvonala: PASS;
+- sikertelen váltás automatikus rollbackje a régi modell és thread
+  megtartásával: PASS;
+- dashboard modellválasztó és admin-only API szerződés: PASS;
+- Node 22.23.1 teljes mock/security/settings/installer/cutover regresszió:
+  127/127 PASS, skip/fail/cancel: 0.
+
+Az éles systemd service Terra → Sol → Terra váltása és a Marveen 1.28.1
+Federation production canary még nem futott le. Ezért a jelölt továbbra sem
+tekinthető végleges 0.3.2 release-nek.
+
+RESULT: 0.3.2 MODEL SELECTION MOCK GATE PASS; WSL PRODUCTION CANARY REQUIRED.

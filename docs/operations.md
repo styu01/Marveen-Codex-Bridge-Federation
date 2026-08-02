@@ -18,19 +18,35 @@ Alapértelmezett hely:
 ```
 
 A konfiguráció, tokenek és pairing fájlok privátak; ne kerüljenek Gitbe. A
-modell és effort az `agents` bejegyzésben állítható:
+szerveroldali modellengedélylista a `codex` blokkban, az aktuális modell és
+effort az `agents` bejegyzésben található:
 
 ```json
 {
-  "model": "gpt-5.6-terra",
-  "reasoningEffort": "high"
+  "codex": {
+    "allowedModels": ["gpt-5.6-terra", "gpt-5.6-sol"]
+  },
+  "agents": [{
+    "model": "gpt-5.6-terra",
+    "reasoningEffort": "high"
+  }]
 }
 ```
 
-A szerepkör és a négy támogatott effort a Bridge dashboardon szerkeszthető.
+A modell, a szerepkör és a négy támogatott effort a Bridge dashboardon
+szerkeszthető. A dashboard csak az `allowedModels` és az élő App Server
+`model/list` metszetét kínálja fel. A szerver mentés előtt ismét validál, ezért
+tetszőleges kliensérték nem kerülhet a konfigurációba.
+
 A mentés atomi, előtte privát backup készül, utána a Bridge kontrolláltan
-újraindítja a Codex runtime-ot és érvényteleníti a korábbi threadet. Kézi
-`systemctl restart` nem szükséges.
+újraindítja a Codex runtime-ot. A korábbi thread csak sikeres readiness után
+érvénytelenedik. Ha az új modell indulása vagy readiness ellenőrzése hibázik,
+a konfiguráció és a runtime automatikusan visszaáll, a régi thread pedig
+megmarad. Kézi `systemctl restart` nem szükséges.
+
+Ha az új és az előző runtime indítása is hibázik, az API
+`runtime_rollback_failed` 503 választ ad, az auditban
+`rollbackRuntimeReady: false` szerepel, és a Bridge nem tekinthető readynek.
 
 A backupok és a tartalommentes auditnapló helye:
 

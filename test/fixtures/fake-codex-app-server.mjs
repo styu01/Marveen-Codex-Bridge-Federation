@@ -128,7 +128,7 @@ input.on('line', (line) => {
     respond(id, {
       data: process.env.FAKE_CODEX_NO_TERRA === '1'
         ? [{ model: 'gpt-5.5' }]
-        : [{ model: 'gpt-5.6-terra' }, { model: 'gpt-5.5' }],
+        : [{ model: 'gpt-5.6-terra' }, { model: 'gpt-5.6-sol' }, { model: 'gpt-5.5' }],
     })
     return
   }

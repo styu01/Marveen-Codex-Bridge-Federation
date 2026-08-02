@@ -209,6 +209,7 @@ NODE_OPTIONS=--no-warnings "${NODE_BIN}" -e '
     || example.systemId !== "codex"
     || example.codex?.imageGenerationRequired !== true
     || example.codex?.imageModel !== "gpt-image-2"
+    || JSON.stringify(example.codex?.allowedModels) !== JSON.stringify(["gpt-5.6-terra", "gpt-5.6-sol"])
   ) {
     throw new Error("invalid example config")
   }
@@ -245,17 +246,17 @@ TEST_LOG="$(mktemp)"
     NODE_OPTIONS=--no-warnings \
     "${NODE_BIN}" --test --test-concurrency=1 test/*.test.mjs
 ) | tee "${TEST_LOG}"
-grep -Eq '^(#|ℹ) tests 125$' "${TEST_LOG}" \
-  || fail "expected exactly 125 tests"
-grep -Eq '^(#|ℹ) pass 125$' "${TEST_LOG}" \
-  || fail "expected exactly 125 passing tests"
+grep -Eq '^(#|ℹ) tests 127$' "${TEST_LOG}" \
+  || fail "expected exactly 127 tests"
+grep -Eq '^(#|ℹ) pass 127$' "${TEST_LOG}" \
+  || fail "expected exactly 127 passing tests"
 grep -Eq '^(#|ℹ) fail 0$' "${TEST_LOG}" \
   || fail "test failures were reported"
 grep -Eq '^(#|ℹ) skipped 0$' "${TEST_LOG}" \
   || fail "tests were skipped"
 grep -Eq '^(#|ℹ) cancelled 0$' "${TEST_LOG}" \
   || fail "tests were cancelled"
-pass "all 125 Phase 1-7 mock, security, settings, installer, cutover and rollback tests pass with no skip"
+pass "all 127 Phase 1-7 mock, security, settings, installer, cutover and rollback tests pass with no skip"
 
 if [[ "${MOCK_ONLY}" -eq 1 ]]; then
   echo "RESULT: PHASE 7 MOCK INSTALLER, CUTOVER, ROLLBACK AND FEDERATION PASS (REAL CODEX NOT RUN)"

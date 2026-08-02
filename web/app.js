@@ -65,6 +65,10 @@ function renderSettings(settings) {
     `<span>Modell: <strong>${escapeHtml(settings.model)}</strong></span>`,
     `<span>Aktuális effort: <strong>${escapeHtml(settings.reasoningEffort)}</strong></span>`,
   ].join('')
+  byId('settings-model').innerHTML = settings.selectableModels
+    .map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`)
+    .join('')
+  byId('settings-model').value = settings.model
   byId('settings-effort').value = settings.reasoningEffort
   byId('settings-role').value = settings.developerInstructions
   byId('restore-settings').disabled = !settings.canRestore
@@ -72,8 +76,8 @@ function renderSettings(settings) {
 
 function renderSettingsAudit(records) {
   byId('settings-audit').innerHTML = records.length
-    ? records.map((record) => `<tr><td>${new Date(record.timestampMs).toLocaleString('hu-HU')}</td><td>${escapeHtml(record.actor)}</td><td>${escapeHtml(record.action)}</td><td>${escapeHtml(record.changes?.reasoningEffort?.before ?? '—')} → ${escapeHtml(record.changes?.reasoningEffort?.after ?? '—')}</td><td>${escapeHtml(record.outcome)}</td></tr>`).join('')
-    : '<tr><td colspan="5" class="muted">Még nincs beállításmódosítás.</td></tr>'
+    ? records.map((record) => `<tr><td>${new Date(record.timestampMs).toLocaleString('hu-HU')}</td><td>${escapeHtml(record.actor)}</td><td>${escapeHtml(record.action)}</td><td>${escapeHtml(record.changes?.model?.before ?? '—')} → ${escapeHtml(record.changes?.model?.after ?? '—')}</td><td>${escapeHtml(record.changes?.reasoningEffort?.before ?? '—')} → ${escapeHtml(record.changes?.reasoningEffort?.after ?? '—')}</td><td>${escapeHtml(record.outcome)}</td></tr>`).join('')
+    : '<tr><td colspan="6" class="muted">Még nincs beállításmódosítás.</td></tr>'
 }
 
 function renderRuns(runs) {
@@ -123,6 +127,7 @@ function setSettingsBusy(busy, message = '') {
 async function saveSettings(event) {
   event.preventDefault()
   const actor = byId('settings-actor').value.trim()
+  const model = byId('settings-model').value
   const developerInstructions = byId('settings-role').value
   const reasoningEffort = byId('settings-effort').value
   if (!actor || !developerInstructions.trim()) {
@@ -130,14 +135,14 @@ async function saveSettings(event) {
     return
   }
   const confirmed = window.confirm(
-    `Biztosan mented a szerepkört és az effortot (${state.settings.reasoningEffort} → ${reasoningEffort})? A régi Codex-thread lezárul, a runtime újraindul.`,
+    `Biztosan mented a modellt (${state.settings.model} → ${model}), a szerepkört és az effortot (${state.settings.reasoningEffort} → ${reasoningEffort})? Sikeres readiness után a régi Codex-thread lezárul.`,
   )
   if (!confirmed) return
   setSettingsBusy(true, 'Mentés és runtime-újraindítás…')
   try {
     await api('/v1/dashboard/agent-settings', {
       method: 'PUT',
-      body: JSON.stringify({ actor, developerInstructions, reasoningEffort, confirm: true }),
+      body: JSON.stringify({ actor, model, developerInstructions, reasoningEffort, confirm: true }),
     })
     await refresh()
     byId('settings-status').textContent = 'Mentve. A runtime újraindult, a régi thread lezárult.'

@@ -20,6 +20,7 @@ import { loadServiceConfig } from './config.mjs'
 const EFFORTS = new Set(['low', 'medium', 'high', 'xhigh'])
 const MAX_INSTRUCTIONS_BYTES = 100 * 1024
 const MAX_ACTOR_LENGTH = 80
+const MODEL_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/
 
 function fail(code, message, status = 400) {
   const error = new Error(message)
@@ -111,6 +112,32 @@ function validatedEffort(value) {
   return value
 }
 
+function validatedModel(value) {
+  if (typeof value !== 'string' || !MODEL_NAME.test(value)) {
+    throw fail('invalid_model', 'model is invalid')
+  }
+  return value
+}
+
+function auditChanges(beforeAgent, afterAgent) {
+  return {
+    model: {
+      before: beforeAgent.model,
+      after: afterAgent.model,
+    },
+    developerInstructions: {
+      beforeSha256: sha256(beforeAgent.developerInstructions),
+      afterSha256: sha256(afterAgent.developerInstructions),
+      beforeBytes: Buffer.byteLength(beforeAgent.developerInstructions),
+      afterBytes: Buffer.byteLength(afterAgent.developerInstructions),
+    },
+    reasoningEffort: {
+      before: beforeAgent.reasoningEffort,
+      after: afterAgent.reasoningEffort,
+    },
+  }
+}
+
 function parseRoot(bytes) {
   let value
   try {
@@ -147,6 +174,7 @@ export class AgentSettingsManager {
       agentId: agent.id,
       displayName: agent.displayName,
       model: agent.model,
+      selectableModels: this.runtime.selectableModels(),
       developerInstructions: agent.developerInstructions,
       reasoningEffort: agent.reasoningEffort,
       canRestore: this.backups().length > 0,
@@ -202,27 +230,33 @@ export class AgentSettingsManager {
       throw fail('confirmation_required', 'confirm must be true', 409)
     }
     const actor = validatedActor(payload.actor)
+    const model = validatedModel(payload.model)
     const developerInstructions = validatedInstructions(payload.developerInstructions)
     const reasoningEffort = validatedEffort(payload.reasoningEffort)
     const current = this.current()
     if (
-      current.developerInstructions === developerInstructions
+      current.model === model
+      && current.developerInstructions === developerInstructions
       && current.reasoningEffort === reasoningEffort
     ) {
       throw fail('no_change', 'settings are unchanged', 409)
     }
-    return this.exclusive(() => this.apply({
-      actor,
-      action: 'update',
-      transform(root) {
-        if (!Array.isArray(root.agents) || root.agents.length !== 1) {
-          throw fail('single_agent_required', '0.3.2 settings require exactly one agent', 409)
-        }
-        root.agents[0].developerInstructions = developerInstructions
-        root.agents[0].reasoningEffort = reasoningEffort
-        return root
-      },
-    }))
+    return this.exclusive(() => {
+      this.runtime.assertModelSelectable(model)
+      return this.apply({
+        actor,
+        action: 'update',
+        transform(root) {
+          if (!Array.isArray(root.agents) || root.agents.length !== 1) {
+            throw fail('single_agent_required', '0.3.2 settings require exactly one agent', 409)
+          }
+          root.agents[0].model = model
+          root.agents[0].developerInstructions = developerInstructions
+          root.agents[0].reasoningEffort = reasoningEffort
+          return root
+        },
+      })
+    })
   }
 
   async restore(payload) {
@@ -243,8 +277,10 @@ export class AgentSettingsManager {
       if (!Array.isArray(root.agents) || root.agents.length !== 1) {
         throw fail('invalid_backup', 'settings backup does not contain exactly one agent', 409)
       }
+      const model = validatedModel(root.agents[0].model)
       validatedInstructions(root.agents[0].developerInstructions)
       validatedEffort(root.agents[0].reasoningEffort)
+      this.runtime.assertModelSelectable(model)
       return this.apply({ actor, action: 'restore', root, sourceBackup: backupName })
     })
   }
@@ -285,6 +321,15 @@ export class AgentSettingsManager {
         outcome: 'failed_rolled_back',
         agentId: beforeAgent.id,
         errorCode: error?.code ?? 'runtime_restart_failed',
+        ...(error?.rollbackError?.code
+          ? { rollbackErrorCode: error.rollbackError.code }
+          : {}),
+        ...(nextConfig?.agents?.[0]
+          ? { changes: auditChanges(beforeAgent, nextConfig.agents[0]) }
+          : {}),
+        rollbackRuntimeReady: typeof this.runtime.isReady === 'function'
+          ? this.runtime.isReady()
+          : null,
       })
       throw error
     }
@@ -298,18 +343,7 @@ export class AgentSettingsManager {
       action,
       outcome: 'succeeded',
       agentId: beforeAgent.id,
-      changes: {
-        developerInstructions: {
-          beforeSha256: sha256(beforeAgent.developerInstructions),
-          afterSha256: sha256(afterAgent.developerInstructions),
-          beforeBytes: Buffer.byteLength(beforeAgent.developerInstructions),
-          afterBytes: Buffer.byteLength(afterAgent.developerInstructions),
-        },
-        reasoningEffort: {
-          before: beforeAgent.reasoningEffort,
-          after: afterAgent.reasoningEffort,
-        },
-      },
+      changes: auditChanges(beforeAgent, afterAgent),
       backup: backupName,
       ...(sourceBackup ? { sourceBackup } : {}),
     }
