@@ -381,12 +381,12 @@ export class CodexAppServerRuntime {
     }
 
     const previousAgent = { ...this.agents.get(nextAgent.id) }
-    if (this.state) this.state.invalidateThread(nextAgent.id)
     await this.stop()
     this.agents.set(nextAgent.id, { ...nextAgent })
     this.config.agents = [...this.agents.values()]
     try {
       await this.start()
+      if (this.state) this.state.invalidateThread(nextAgent.id)
     } catch (error) {
       this.agents.set(previousAgent.id, previousAgent)
       this.config.agents = [...this.agents.values()]

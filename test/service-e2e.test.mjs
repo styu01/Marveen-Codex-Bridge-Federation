@@ -316,6 +316,8 @@ test('standalone dashboard is static, hardened and admin API remains authenticat
   assert.equal(script.status, 200)
   assert.match(script.headers.get('content-type'), /^text\/javascript/)
   assert.match(script.body, /sessionStorage/)
+  assert.doesNotMatch(dashboard.body, /Képartifactok|id="artifacts"/)
+  assert.doesNotMatch(script.body, /\/v1\/artifacts|createObjectURL|renderArtifacts/)
 
   assert.equal((await jsonRequest(
     env.endpoint.baseUrl,
@@ -327,9 +329,10 @@ test('standalone dashboard is static, hardened and admin API remains authenticat
     { token: ADMIN_TOKEN },
   )
   assert.equal(summary.status, 200)
-  assert.equal(summary.body.data.bridgeVersion, '0.3.1')
+  assert.equal(summary.body.data.bridgeVersion, '0.3.2')
   assert.equal(summary.body.data.readiness.ready, true)
   assert.equal(summary.body.data.agents[0].id, 'programozo')
+  assert.equal(Object.hasOwn(summary.body.data.counts, 'artifacts'), false)
 
   const runs = await jsonRequest(env.endpoint.baseUrl, '/v1/runs', {
     token: ADMIN_TOKEN,

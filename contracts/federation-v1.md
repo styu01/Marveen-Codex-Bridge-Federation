@@ -37,7 +37,7 @@ Kötelező válaszmezők:
 ```json
 {
   "system": "codex",
-  "marveenVersion": "bridge-0.3.1",
+  "marveenVersion": "bridge-0.3.2",
   "federationVersion": 1,
   "agents": [],
   "skills": []

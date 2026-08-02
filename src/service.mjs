@@ -11,7 +11,7 @@ import { FederationInboxOrchestrator } from './inbox-orchestrator.mjs'
 import { FederationOutboxWorker } from './outbox-delivery.mjs'
 import { publicConfig } from './config.mjs'
 
-const BRIDGE_VERSION = '0.3.1'
+const BRIDGE_VERSION = '0.3.2'
 const DASHBOARD_FILES = new Map([
   ['/dashboard', ['text/html; charset=utf-8', readFileSync(new URL('../web/index.html', import.meta.url))]],
   ['/dashboard/', ['text/html; charset=utf-8', readFileSync(new URL('../web/index.html', import.meta.url))]],
@@ -310,9 +310,6 @@ export class FederationBridgeService {
         const approvals = typeof this.runtime.listApprovals === 'function'
           ? inventory('approvals', () => this.runtime.listApprovals({ state: 'pending' }))
           : []
-        const artifacts = typeof this.runtime.listArtifacts === 'function'
-          ? inventory('artifacts', () => this.runtime.listArtifacts())
-          : []
         const runs = typeof this.runtime.listRuns === 'function'
           ? inventory('runs', () => this.runtime.listRuns({ limit: 100 }))
           : []
@@ -327,7 +324,6 @@ export class FederationBridgeService {
               outbox: outbox.length,
               outboxDead: outbox.filter((row) => row.state === 'dead').length,
               pendingApprovals: approvals.length,
-              artifacts: artifacts.length,
               runs: runs.length,
               runsFailed: runs.filter((row) => (
                 row.state === 'failed' || row.state === 'interrupted_unknown'

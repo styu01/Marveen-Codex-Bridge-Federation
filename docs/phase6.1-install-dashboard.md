@@ -51,7 +51,11 @@ Megjelenített adatok:
 - legutóbbi futások;
 - függő approvalok és approve/decline;
 - inbox/outbox hibaszámlálók;
-- képartifactok és hitelesített bináris előnézet.
+- agentbeállítások és tartalommentes auditnapló.
+
+Az artifact-lista és a képelőnézet a 0.3.2 termékdöntése alapján nem része a
+dashboardnak. Az artifact admin API, a validáció és az immutable tárolás ettől
+független backend-szerződésként változatlanul megmarad.
 
 ## Phase 6.2 előfeltétele
 

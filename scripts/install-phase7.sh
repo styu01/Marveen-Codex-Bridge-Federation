@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="0.3.1"
+VERSION="0.3.2"
 SOURCE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 NODE_BIN=""
 CODEX_BIN=""
@@ -227,7 +227,7 @@ const config = JSON.parse(readFileSync(configPath, 'utf8'))
 const agent = config.agents?.find((entry) => entry?.id === 'programozo')
 if (agent && (!agent.developerInstructions || agent.developerInstructions.trim() === '')) {
   agent.developerInstructions = readFileSync(instructionsPath, 'utf8')
-  const temporary = `${configPath}.0.3.1.tmp`
+  const temporary = `${configPath}.0.3.2.tmp`
   writeFileSync(temporary, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 })
   chmodSync(temporary, 0o600)
   renameSync(temporary, configPath)

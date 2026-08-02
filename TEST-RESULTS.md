@@ -45,7 +45,7 @@ Végső Phase 6.3 runtime PASS csak akkor mondható ki, ha megjelenik:
 ```text
 RESULT: PHASE 5 REAL APPROVAL AND MESSAGE TOOL PASS
 RESULT: PHASE 5.2 REAL IMAGEGEN AND ARTIFACT PASS
-RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION, IMAGEGEN AND DASHBOARD PASS
+RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION AND IMAGEGEN PASS
 ```
 
 ## 0.3.0 dependency, systemd és Federation peer-identitás kapu
@@ -120,3 +120,28 @@ Dátum: 2026-08-01
   `database=true`, `runtime=true`.
 
 RESULT: 0.3.1 RELEASE GATE PASS.
+
+## 0.3.2 artifact-UI tisztítás és verifikációs rendezés
+
+Dátum: 2026-08-02
+
+- a GitHub `main` 96 release-fájlja Git-blob szinten pontosan egyezett a
+  hitelesített 0.3.1 archívummal: PASS;
+- a változtatás előtti Node 22.23.1 Phase 7 mock baseline: 124/124 PASS;
+- a „Képartifactok” szekció, az artifact összegző kártya, a frontend
+  artifact-lista/content kérések és a `blob:` URL-készítés eltávolítása: PASS;
+- a dashboard summary felesleges artifact-leltározásának eltávolítása: PASS;
+- az artifact manager, migráció, regisztráló tool, validáció, immutable
+  tárolás, Federation receipt és hitelesített admin API regressziója: PASS;
+- a Phase 2/3/4/5 történeti kapuk deprecation stubként a Phase 7 kapura
+  irányítanak: PASS;
+- a sikertelen runtime-átállás a régi agent-threadet nem érvényteleníti, és a
+  régi runtime-konfigurációval újraindul: PASS;
+- a módosítás utáni Node 22.23.1 Phase 7 mock kapu: 125/125 PASS,
+  skip/fail/cancel: 0.
+
+A `gpt-5.6-sol` valós Codex App Server-kapu, a modellválasztó, a telepített
+service restart/rollback és a WSL production canary még nyitott. Ezért ez nem
+0.3.2 release PASS.
+
+RESULT: 0.3.2 PRE-SOL MOCK GATE PASS (REAL CODEX NOT RUN).

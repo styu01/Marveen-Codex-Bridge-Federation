@@ -1,6 +1,5 @@
 const state = {
   token: sessionStorage.getItem('marveenCodexBridgeToken') || '',
-  artifactUrls: [],
   settings: null,
 }
 
@@ -47,7 +46,6 @@ function renderCards(summary) {
     ['Dead outbox', summary.counts.outboxDead],
     ['Függő approval', summary.counts.pendingApprovals],
     ['Futások', summary.counts.runs],
-    ['Artifactok', summary.counts.artifacts],
   ]
   byId('summary-cards').innerHTML = cards.map(([label, value]) => (
     `<article class="card"><span class="muted">${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`
@@ -84,26 +82,6 @@ function renderRuns(runs) {
     : '<tr><td colspan="6" class="muted">Nincs futás.</td></tr>'
 }
 
-async function artifactImage(artifact) {
-  const response = await fetch(`/v1/artifacts/${encodeURIComponent(artifact.artifactId)}/content`, {
-    headers: { authorization: `Bearer ${state.token}` },
-  })
-  if (!response.ok) return null
-  const url = URL.createObjectURL(await response.blob())
-  state.artifactUrls.push(url)
-  return url
-}
-
-async function renderArtifacts(artifacts) {
-  state.artifactUrls.forEach((url) => URL.revokeObjectURL(url))
-  state.artifactUrls = []
-  const views = await Promise.all(artifacts.slice(0, 12).map(async (artifact) => {
-    const image = await artifactImage(artifact)
-    return `<article class="artifact">${image ? `<img src="${image}" alt="">` : ''}<div><strong>${escapeHtml(artifact.workspaceRelativePath)}</strong><br><span class="muted">${escapeHtml(artifact.width)}×${escapeHtml(artifact.height)}</span></div></article>`
-  }))
-  byId('artifacts').innerHTML = views.join('') || '<p class="muted">Nincs képartifact.</p>'
-}
-
 async function decideApproval(approvalId, decision) {
   await api(`/v1/approvals/${encodeURIComponent(approvalId)}/decision`, {
     method: 'POST',
@@ -119,11 +97,10 @@ function renderApprovals(approvals) {
 }
 
 async function refresh() {
-  const [summary, runs, approvals, artifacts, settings, audit] = await Promise.all([
+  const [summary, runs, approvals, settings, audit] = await Promise.all([
     api('/v1/dashboard/summary'),
     optionalData('/v1/runs?limit=100'),
     optionalData('/v1/approvals?state=pending'),
-    optionalData('/v1/artifacts'),
     api('/v1/dashboard/agent-settings'),
     api('/v1/dashboard/agent-settings/audit?limit=100'),
   ])
@@ -133,7 +110,6 @@ async function refresh() {
   renderApprovals(approvals)
   renderSettings(settings.data)
   renderSettingsAudit(audit.data)
-  await renderArtifacts(artifacts)
   setConnected(true)
 }
 

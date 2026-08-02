@@ -1,4 +1,4 @@
-# Federation Bridge 0.3.1 üzemeltetés
+# Federation Bridge 0.3.2 üzemeltetés
 
 ## Állapotellenőrzés
 
@@ -7,7 +7,7 @@ systemctl --user is-active marveen-codex-bridge.service
 curl --fail --silent http://127.0.0.1:3431/readyz | python3 -m json.tool
 ```
 
-Elvárt verzió: `0.3.1`, `status: ready`, `database: true`, `runtime: true`.
+Elvárt verzió: `0.3.2`, `status: ready`, `database: true`, `runtime: true`.
 
 ## Konfiguráció
 

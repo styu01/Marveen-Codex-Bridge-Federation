@@ -1,4 +1,4 @@
-# Marveen Codex Bridge Federation 0.3.1
+# Marveen Codex Bridge Federation 0.3.2
 
 Önálló, frissítésálló Federation Bridge a Marveen/Béla és a valódi OpenAI
 Codex CLI között. A Bridge a Marveenben egy föderált `programozo` agentet tesz
@@ -8,9 +8,9 @@ egy külön szolgáltatásban maradnak.
 > **Kiemelt képesség: működő AI-képgenerálás.** A Codex-agent a beépített
 > `gpt-image-2` képességgel valódi PNG-képet tud létrehozni. A Bridge a kész
 > képet szerkezetileg és kriptográfiailag ellenőrzi, megváltoztathatatlan
-> artifactként tárolja, majd az admin dashboardon előnézetként is megjeleníti.
-> A valódi GPT-image → artifact → dashboard folyamat a 0.3.1 kiadási kapuban
-> sikeresen lefutott.
+> artifactként tárolja, az eredményhez tartós receiptet kapcsol, és külön
+> hitelesített admin API-n teszi elérhetővé. A valódi GPT-image → validáció →
+> immutable artifact folyamat a 0.3.1 kiadási kapuban sikeresen lefutott.
 
 ## Miért külön Bridge?
 
@@ -30,7 +30,7 @@ integrációt, vagy egy Bridge-frissítés módosítja a Béla rendszer forrás�
 
 | Elem | Validált érték |
 |---|---|
-| Bridge | `0.3.1` |
+| Bridge | `0.3.2` |
 | Marveen baseline | `1.25.1`, Federation v1 |
 | Node.js | `22.23.1` |
 | Codex CLI | `0.145.0` |
@@ -71,7 +71,8 @@ A képalkotás nem szimuláció és nem külön Marveen-plugin. A folyamat:
    PNG-signature-t, chunkokat, CRC-ket, dimenziót, pixelszámot és SHA-256-ot;
 6. a fájl egyedi artifact ID alatt, `0400` jogosultsággal immutable másolatként
    kerül a Bridge saját tárolójába;
-7. a dashboard hitelesített artifact API-n keresztül előnézetet jelenít meg.
+7. a Federation eredmény tartós artifact receiptet kap, az admin API pedig
+   hitelesítetten elérhetővé teszi a metaadatot és a validált bináris tartalmat.
 
 Alapértelmezett korlátok:
 
@@ -105,7 +106,7 @@ sandboxát, hanem azzal együtt működik.
 
 ### Szerepkör- és effort-kezelés
 
-A 0.3.1-ben az admin dashboardon módosítható az egyetlen `programozo` agent:
+A 0.3.2-ben az admin dashboardon módosítható az egyetlen `programozo` agent:
 
 - teljes `developerInstructions` szerepköre;
 - reasoning effortja: `low`, `medium`, `high` vagy `xhigh`.
@@ -146,7 +147,6 @@ A dashboard megjeleníti:
 - inbox és dead outbox darabszám;
 - függő approvalok;
 - legutóbbi Codex-runok és állapotuk;
-- létrehozott képartifactok és előnézetük;
 - agentnév, modell és aktuális reasoning effort;
 - aktuális developerInstructions;
 - beállításváltozások auditnaplója;
@@ -230,9 +230,9 @@ unitja mindig a telepítéskor megadott Node 22 binárisra van rögzítve.
 ## Csomag ellenőrzése
 
 ```bash
-sha256sum -c Marveen-Codex-Bridge-v0.3.1.tar.gz.sha256
-tar -xzf Marveen-Codex-Bridge-v0.3.1.tar.gz
-cd marveen-codex-bridge-0.3.1
+sha256sum -c Marveen-Codex-Bridge-v0.3.2.tar.gz.sha256
+tar -xzf Marveen-Codex-Bridge-v0.3.2.tar.gz
+cd marveen-codex-bridge-0.3.2
 ```
 
 Forrásellenőrzés:
@@ -338,7 +338,7 @@ Elvárt válasz:
 ```json
 {
   "status": "ready",
-  "bridgeVersion": "0.3.1",
+  "bridgeVersion": "0.3.2",
   "database": true,
   "runtime": true
 }
@@ -370,10 +370,12 @@ Részletes útmutató:
 
 ## Tudatos korlátok
 
-- A 0.3.1 egyetlen konfigurált Codex-agentet kezel: `programozo`.
+- A 0.3.2 egyetlen konfigurált Codex-agentet kezel: `programozo`.
 - Az agent megjelenített neve még nem szerkeszthető a dashboardon.
 - Több föderált Codex-agent kezelése későbbi verzió feladata.
 - Képartifactként ebben a verzióban csak PNG regisztrálható.
+- A dashboard nem jelenít meg artifact-listát vagy képelőnézetet; az artifact
+  backend, a validáció, az immutable tárolás, a receipt és az admin API megmarad.
 - Az admin dashboard kizárólag loopbackről érhető el; nincs távoli admin UI.
 - A Bridge nem kap közvetlen hozzáférést a Marveen memóriájához, kanbanjához
   vagy belső SQLite-adatbázisához.
@@ -387,6 +389,7 @@ Részletes útmutató:
 - [Approval és dinamikus tool architektúra](docs/phase5-approval-and-tools.md)
 - [Képalkotás és artifact pipeline](docs/phase5.2-imagegen-and-artifacts.md)
 - [Üzemeltetés és rollback](docs/operations.md)
+- [Aktuális verifikációs kapu](docs/verification.md)
 - [Kiadási teszteredmények](TEST-RESULTS.md)
 
 ## Licenc

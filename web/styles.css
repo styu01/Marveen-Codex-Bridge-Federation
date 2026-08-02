@@ -40,10 +40,6 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 10px; border-bottom: 1px solid #223c54; text-align: left; font-size: .9rem; }
 .state { font-weight: 750; }
-.artifact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
-.artifact { border: 1px solid #29465e; border-radius: 10px; overflow: hidden; background: #06101b; }
-.artifact img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; background: #0c1a28; }
-.artifact div { padding: 10px; overflow-wrap: anywhere; }
 .approval { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid #223c54; }
 .approval:first-child { border-top: 0; }
 .section-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }

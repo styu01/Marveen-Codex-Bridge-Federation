@@ -140,7 +140,7 @@ export class AgentSettingsManager {
 
   current() {
     if (this.config.agents.length !== 1) {
-      throw fail('single_agent_required', '0.3.1 settings require exactly one agent', 409)
+      throw fail('single_agent_required', '0.3.2 settings require exactly one agent', 409)
     }
     const agent = this.config.agents[0]
     return {
@@ -216,7 +216,7 @@ export class AgentSettingsManager {
       action: 'update',
       transform(root) {
         if (!Array.isArray(root.agents) || root.agents.length !== 1) {
-          throw fail('single_agent_required', '0.3.1 settings require exactly one agent', 409)
+          throw fail('single_agent_required', '0.3.2 settings require exactly one agent', 409)
         }
         root.agents[0].developerInstructions = developerInstructions
         root.agents[0].reasoningEffort = reasoningEffort
@@ -269,7 +269,7 @@ export class AgentSettingsManager {
     try {
       nextConfig = loadServiceConfig(this.configPath)
       if (nextConfig.agents.length !== 1 || nextConfig.agents[0].id !== beforeAgent.id) {
-        throw fail('agent_identity_change_forbidden', 'agent identity cannot change in 0.3.1', 409)
+        throw fail('agent_identity_change_forbidden', 'agent identity cannot change in 0.3.2', 409)
       }
       await this.runtime.reconfigureAgent(nextConfig.agents[0])
       this.config.agents = nextConfig.agents

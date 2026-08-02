@@ -181,6 +181,30 @@ test('runtime reconfiguration invalidates the old thread and starts a new genera
   assert.deepEqual(result, { agentId: 'programozo', generation: 1 })
 })
 
+test('failed runtime reconfiguration restores the previous agent without invalidating its thread', async () => {
+  const original = { id: 'programozo', reasoningEffort: 'high', developerInstructions: 'Régi' }
+  const next = { id: 'programozo', reasoningEffort: 'xhigh', developerInstructions: 'Új' }
+  const runtime = new CodexAppServerRuntime({
+    config: { agents: [original] },
+    environment: {},
+  })
+  const invalidated = []
+  runtime.state = { invalidateThread: (agentId) => invalidated.push(agentId) }
+  runtime.approvals = { list: () => [] }
+  runtime.stop = async () => {}
+  let starts = 0
+  runtime.start = async () => {
+    starts += 1
+    if (starts === 1) throw Object.assign(new Error('new model failed'), {
+      code: 'model_unavailable',
+    })
+  }
+  await assert.rejects(runtime.reconfigureAgent(next), { code: 'model_unavailable' })
+  assert.equal(starts, 2)
+  assert.deepEqual(invalidated, [])
+  assert.equal(runtime.agents.get('programozo').reasoningEffort, 'high')
+})
+
 test('runtime reconfiguration refuses active work and pending approval', async () => {
   const original = { id: 'programozo', reasoningEffort: 'high', developerInstructions: 'Régi' }
   const runtime = new CodexAppServerRuntime({

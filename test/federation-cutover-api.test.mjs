@@ -208,6 +208,9 @@ test('cutover script keeps rollback and independence invariants', () => {
     'utf8',
   )
   const verifier = readFileSync(resolve('scripts/verify-phase7.sh'), 'utf8')
+  const historicalVerifiers = [2, 3, 4, 5].map((phase) => (
+    readFileSync(resolve(`scripts/verify-phase${phase}.sh`), 'utf8')
+  ))
   assert.match(source, /Without --execute this command is a read-only preflight/)
   assert.match(source, /ROLLBACK: disabling Federation first/)
   assert.match(source, /federation-cutover-api\.mjs" \\\n\s+disable/)
@@ -312,10 +315,15 @@ test('cutover script keeps rollback and independence invariants', () => {
     source,
     /\b(?:sed|perl|python3?)\b[^\n]*src\/web\/|web\/app\.js.*replace/,
   )
-  assert.match(verifier, /tests 124\$/)
-  assert.match(verifier, /pass 124\$/)
-  assert.match(verifier, /all 124 Phase 1-7/)
+  assert.match(verifier, /tests 125\$/)
+  assert.match(verifier, /pass 125\$/)
+  assert.match(verifier, /all 125 Phase 1-7/)
   assert.doesNotMatch(verifier, /expected exactly 105/)
+  for (const historical of historicalVerifiers) {
+    assert.match(historical, /DEPRECATED:/)
+    assert.match(historical, /verify-phase7\.sh/)
+    assert.doesNotMatch(historical, /expected exactly \d+ tests/)
+  }
 })
 
 test('Phase 0 gate requires canonical MANIFEST.json and verifies SHA256SUMS', (t) => {

@@ -78,14 +78,14 @@ exec /usr/bin/id "$@"
   const data = join(home, '.local/share/marveen-codex-bridge')
   const candidate = join(data, 'candidate')
   assert.equal(lstatSync(candidate).isSymbolicLink(), true)
-  assert.match(readlinkSync(candidate), /0\.3\.1$/)
+  assert.match(readlinkSync(candidate), /0\.3\.2$/)
   assert.equal(existsSync(join(data, 'current')), false)
   assert.equal(
     JSON.parse(readFileSync(join(
       data,
-      'releases/0.3.1/package.json',
+      'releases/0.3.2/package.json',
     ))).version,
-    '0.3.1',
+    '0.3.2',
   )
   const configRoot = join(home, '.config/marveen-codex-bridge')
   assert.equal(lstatSync(join(configRoot, 'config.json')).mode & 0o777, 0o600)
@@ -109,15 +109,15 @@ exec /usr/bin/id "$@"
   assert.doesNotMatch(unit, /bela-codex-bridge/)
   assert.match(
     unit,
-    /releases\/0\.3\.1\/src\/main\.mjs/,
+    /releases\/0\.3\.2\/src\/main\.mjs/,
   )
   assert.match(
     unit,
-    /MARVEEN_CODEX_BRIDGE_RUNTIME_MODULE=.*releases\/0\.3\.1\/src\/codex-runtime-module\.mjs/,
+    /MARVEEN_CODEX_BRIDGE_RUNTIME_MODULE=.*releases\/0\.3\.2\/src\/codex-runtime-module\.mjs/,
   )
   assert.match(
     unit,
-    /MARVEEN_CODEX_BRIDGE_BETTER_SQLITE3_PATH=.*releases\/0\.3\.1\/node_modules\/better-sqlite3/,
+    /MARVEEN_CODEX_BRIDGE_BETTER_SQLITE3_PATH=.*releases\/0\.3\.2\/node_modules\/better-sqlite3/,
   )
   assert.match(unit, /Environment=CODEX_HOME=.*\/\.codex/)
   assert.match(unit, /ReadWritePaths=.*\/\.config\/marveen-codex-bridge/)
@@ -138,7 +138,7 @@ exec /usr/bin/id "$@"
     /mv -f "\$\{UNIT_PATH\}\.rollback" "\$\{UNIT_PATH\}"[\s\S]*reset-failed marveen-codex-bridge\.service[\s\S]*ROLLBACK_READY/,
   )
 
-  const installedRelease = join(data, 'releases/0.3.1')
+  const installedRelease = join(data, 'releases/0.3.2')
   const staleMarker = join(installedRelease, 'STALE-CANDIDATE')
   writeFileSync(staleMarker, 'must be replaced\n')
   const replacement = spawnSync('bash', [
@@ -166,7 +166,7 @@ exec /usr/bin/id "$@"
   assert.equal(existsSync(staleMarker), false)
   assert.ok(
     readdirSync(join(data, 'releases'))
-      .some((name) => name.startsWith('.0.3.1.superseded.')),
+      .some((name) => name.startsWith('.0.3.2.superseded.')),
   )
 })
 
