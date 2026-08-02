@@ -139,6 +139,15 @@ exec /usr/bin/id "$@"
     /mv -f "\$\{UNIT_PATH\}\.rollback" "\$\{UNIT_PATH\}"[\s\S]*reset-failed marveen-codex-bridge\.service[\s\S]*ROLLBACK_READY/,
   )
 
+  const legacyConfigPath = join(configRoot, 'config.json')
+  const legacyConfig = JSON.parse(readFileSync(legacyConfigPath, 'utf8'))
+  delete legacyConfig.codex.allowedModels
+  legacyConfig.agents[0].developerInstructions = 'Megőrzendő 0.3.1 production szerepkör.'
+  writeFileSync(legacyConfigPath, `${JSON.stringify(legacyConfig, null, 2)}\n`, {
+    mode: 0o600,
+  })
+  chmodSync(legacyConfigPath, 0o600)
+
   const installedRelease = join(data, 'releases/0.3.2')
   const staleMarker = join(installedRelease, 'STALE-CANDIDATE')
   writeFileSync(staleMarker, 'must be replaced\n')
@@ -165,6 +174,12 @@ exec /usr/bin/id "$@"
   assert.equal(replacement.status, 0, `${replacement.stdout}\n${replacement.stderr}`)
   assert.match(replacement.stdout, /Superseded inactive release retained at:/)
   assert.equal(existsSync(staleMarker), false)
+  const preservedLegacyConfig = JSON.parse(readFileSync(legacyConfigPath, 'utf8'))
+  assert.equal(preservedLegacyConfig.codex.allowedModels, undefined)
+  assert.equal(
+    preservedLegacyConfig.agents[0].developerInstructions,
+    'Megőrzendő 0.3.1 production szerepkör.',
+  )
   assert.ok(
     readdirSync(join(data, 'releases'))
       .some((name) => name.startsWith('.0.3.2.superseded.')),
