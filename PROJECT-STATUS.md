@@ -328,6 +328,14 @@ RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION AND IMAGEGEN PASS
 Ez hiteles Sol preflight, de nem azonos az éles systemd service és a Marveen
 1.28.1 ellen futó végső production canaryval. Az továbbra is release-kapu.
 
+A modellválasztót tartalmazó
+`e0beee33d2078f03567e985f248e2476ec0da9e1` commiton ugyanez a teljes valós
+kapu 2026-08-02-án megismételve is PASS lett Node `22.23.1` és Codex CLI
+`0.145.0` alatt. Az eredmény `127/127` automatizált teszt, valamint valós Sol,
+approval, Federation és `gpt-image-2` artifact PASS volt, skip/fail/cancel
+nélkül. A providerfüggő modellválasztós commit tehát bizonyított; már csak a
+telepített service és a Marveen `1.28.1` végső production canaryja nyitott.
+
 ### 7.2 Sol-tesztkapu és fennmaradó production ellenőrzés
 
 A valós preflight a következő providerfüggő útvonalakat ellenőrizte; a
@@ -347,13 +355,23 @@ modellváltási tranzakciót a 0.3.2 jelölt regressziós kapuja külön bizony�
     és nem érvényteleníti a régi threadet;
 12. teljes regressziós teszt PASS.
 
+A végső telepített kapuhoz elkészült a
+`scripts/production-canary-0.3.2.mjs` eszköz. Alapértelmezésben read-only
+preflight; csak `--execute` mellett végez Terra → Sol → Terra váltást. Két
+backupot, két sikeres auditrekordot, minden váltás után readiness állapotot,
+mindkét modellel pontosan-egyszeri Marveen canaryt, végül tiltott modell teljes
+állapotváltozás nélküli elutasítását követeli. A production fault injection
+szándékosan kimarad; a post-write automatikus rollbacket a determinisztikus
+regressziós teszt bizonyítja.
+
 A repository jelenlegi valós preflightja paraméterezhető modellel. A támogatott
 belépési pont a `scripts/verify-phase7.sh --model ...`. A
 `verify-phase2.sh`, `verify-phase3.sh`, `verify-phase4.sh` és
 `verify-phase5.sh` történeti kapuk, ezért a jelenlegi ágon deprecation hibával
-leállnak. A release előtt még az éles service-en kell bizonyítani a
-Terra → Sol → Terra modellváltást, a readiness állapotot, az auditot, az
-automatikus rollbacket és a Marveen 1.28.1 Federation canaryját.
+leállnak. A release előtt még az éles service-en kell bizonyítani a Terra → Sol
+→ Terra modellváltást, a readiness állapotot, a backupot, az auditot, a tiltott
+modell mutációmentes elutasítását és a Marveen 1.28.1 Federation canaryját. A
+post-write automatikus rollback regressziós kapuja továbbra is kötelező.
 
 ### 7.3 Implementált modellválasztási szerződés
 

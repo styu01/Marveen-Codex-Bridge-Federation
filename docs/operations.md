@@ -58,6 +58,44 @@ Az API minden beállítási végpontja ugyanazt a szigorú admin bearer tokent
 követeli, mint a dashboard. Mentéshez és visszaállításhoz `confirm: true`,
 valamint egy nem üres módosítónév szükséges.
 
+## 0.3.2 production canary
+
+Az aktivált service végső WSL-kapuja külön eszközzel fut. A parancs kizárólag
+Node 22 alatt, nem root felhasználóként működik, és megköveteli:
+
+- az aktív `marveen-codex-bridge.service` 0.3.2 verziót;
+- az inaktív legacy `bela-codex-bridge.service` unitot;
+- a telepített Marveen pontosan `1.28.1` verzióját;
+- privát, nem symlink admin-tokeneket és Bridge-konfigurációt;
+- az engedélyezett Federationt és a `codex` peert;
+- Terra kiinduló modellt és az élő modelllistában elérhető Sol modellt.
+
+Read-only preflight:
+
+```bash
+"$HOME/.nvm/versions/node/v22.23.1/bin/node" \
+  scripts/production-canary-0.3.2.mjs
+```
+
+Módosító végső kapu:
+
+```bash
+"$HOME/.nvm/versions/node/v22.23.1/bin/node" \
+  scripts/production-canary-0.3.2.mjs --execute
+```
+
+A módosító kapu Terra → Sol → Terra sorrendben fut, minden váltás után
+readiness-, backup- és auditbizonyítékot kér, majd mindkét modellel
+Marveen → Codex → Marveen exactly-once canaryt futtat. Végül allowlisten kívüli
+modellt küld a szervernek, és ellenőrzi, hogy a konfiguráció hash-e, a backupok
+és az audit változatlan maradtak. Ha a Sol szakasz után hiba történik, a script
+megpróbálja visszaállítani Terrát; cleanup-hibánál külön, nem elhallgatott
+hibával áll le.
+
+A post-write runtime-rollback determinisztikus ellenőrzése a teljes regressziós
+teszt része. Éles fault injection szándékosan nincs: a Codex bináris vagy az
+App Server mesterséges megrongálása a visszaállítást is veszélyeztetné.
+
 ## Bridge-frissítés
 
 1. Ellenőrizd az archívum SHA-256 értékét.

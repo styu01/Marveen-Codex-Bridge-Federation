@@ -36,3 +36,22 @@ A valós Codex App Server-, approval-, Federation tool- és imagegen-kapu:
 A valós kapu disposable adatbázisokat és loopback teszt-peert használ. Nem
 helyettesíti a telepített systemd service readiness-, restart-, rollback- és
 Marveen → Codex → Marveen production canary ellenőrzését.
+
+## Telepített 0.3.2 production canary
+
+Az aktivált Bridge és a Marveen 1.28.1 ellen először read-only preflightot,
+majd explicit `--execute` kaput kell futtatni:
+
+```bash
+"$HOME/.nvm/versions/node/v22.23.1/bin/node" \
+  scripts/production-canary-0.3.2.mjs
+
+"$HOME/.nvm/versions/node/v22.23.1/bin/node" \
+  scripts/production-canary-0.3.2.mjs --execute
+```
+
+Elvárt zárás:
+
+```text
+RESULT: 0.3.2 WSL SYSTEMD MODEL SELECTION AND MARVEEN 1.28.1 CANARY PASS
+```

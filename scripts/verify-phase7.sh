@@ -164,6 +164,7 @@ required_files=(
   src/inbox-orchestrator.mjs
   src/main.mjs
   src/marveen-pairing.mjs
+  src/production-canary.mjs
   src/runtime-loader.mjs
   src/service.mjs
   src/sqlite-driver.mjs
@@ -180,9 +181,11 @@ required_files=(
   test/main-process.test.mjs
   test/phase5-approval-tools.test.mjs
   test/phase7-installer.test.mjs
+  test/production-canary.test.mjs
   test/federation-cutover-api.test.mjs
   test/service-e2e.test.mjs
   test/sqlite-driver-parity.test.mjs
+  scripts/production-canary-0.3.2.mjs
 )
 for file in "${required_files[@]}"; do
   [[ -f "${SOURCE_ROOT}/${file}" ]] \
@@ -246,17 +249,17 @@ TEST_LOG="$(mktemp)"
     NODE_OPTIONS=--no-warnings \
     "${NODE_BIN}" --test --test-concurrency=1 test/*.test.mjs
 ) | tee "${TEST_LOG}"
-grep -Eq '^(#|ℹ) tests 127$' "${TEST_LOG}" \
-  || fail "expected exactly 127 tests"
-grep -Eq '^(#|ℹ) pass 127$' "${TEST_LOG}" \
-  || fail "expected exactly 127 passing tests"
+grep -Eq '^(#|ℹ) tests 130$' "${TEST_LOG}" \
+  || fail "expected exactly 130 tests"
+grep -Eq '^(#|ℹ) pass 130$' "${TEST_LOG}" \
+  || fail "expected exactly 130 passing tests"
 grep -Eq '^(#|ℹ) fail 0$' "${TEST_LOG}" \
   || fail "test failures were reported"
 grep -Eq '^(#|ℹ) skipped 0$' "${TEST_LOG}" \
   || fail "tests were skipped"
 grep -Eq '^(#|ℹ) cancelled 0$' "${TEST_LOG}" \
   || fail "tests were cancelled"
-pass "all 127 Phase 1-7 mock, security, settings, installer, cutover and rollback tests pass with no skip"
+pass "all 130 Phase 1-7 mock, security, settings, installer, cutover and rollback tests pass with no skip"
 
 if [[ "${MOCK_ONLY}" -eq 1 ]]; then
   echo "RESULT: PHASE 7 MOCK INSTALLER, CUTOVER, ROLLBACK AND FEDERATION PASS (REAL CODEX NOT RUN)"

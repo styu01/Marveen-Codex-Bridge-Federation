@@ -39,7 +39,7 @@ integrációt, vagy egy Bridge-frissítés módosítja a Béla rendszer forrás�
 | Képmodell | `gpt-image-2` |
 | Reasoning effort | `low`, `medium`, `high`, `xhigh` |
 | Federation mód | productionben validált `advisory` |
-| 0.3.2 automatizált teszt | `127/127 PASS`, skip/fail/cancel: `0` |
+| 0.3.2 automatizált teszt | `130/130 PASS`, skip/fail/cancel: `0` |
 | Élő production canary | 0.3.1: Béla → Codex → Béla PASS; 0.3.2: még nyitott |
 
 A 0.3.1 production szolgáltatás a kiadás lezárásakor `ready` állapotú volt,
@@ -380,6 +380,29 @@ release-könyvtárra mutathatnak. Aktiválási hiba esetén az installer
 
 Marveen-frissítés előtt külön Federation contract teszt kötelező. Az, hogy a
 Bridge ready, önmagában nem bizonyítja egy új Marveen-verzió kompatibilitását.
+
+### 0.3.2 WSL production canary
+
+Az aktivált `0.3.2` service és a telepített Marveen `1.28.1` végső kapuja
+alapértelmezésben csak olvasási preflightot végez:
+
+```bash
+"$HOME/.nvm/versions/node/v22.23.1/bin/node" \
+  scripts/production-canary-0.3.2.mjs
+```
+
+Csak sikeres preflight után futtatható a módosító kapu:
+
+```bash
+"$HOME/.nvm/versions/node/v22.23.1/bin/node" \
+  scripts/production-canary-0.3.2.mjs --execute
+```
+
+A canary Terra → Sol → Terra váltást, két readiness-ellenőrzést, backupot,
+auditot, mindkét modellel pontosan-egyszeri Marveen Federation választ és egy
+allowlisten kívüli modell állapotváltozás nélküli elutasítását követeli. Hiba
+esetén megpróbálja visszaállítani a kiinduló Terra modellt. Nem tartalmaz
+production hibainjektálást és nem módosítja a Marveen forrását.
 
 Részletes útmutató:
 [Telepítés, frissítés, rollback és eltávolítás](docs/operations.md).

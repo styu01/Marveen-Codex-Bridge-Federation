@@ -165,10 +165,23 @@ Dátum: 2026-08-02
   megtartásával: PASS;
 - dashboard modellválasztó és admin-only API szerződés: PASS;
 - Node 22.23.1 teljes mock/security/settings/installer/cutover regresszió:
-  127/127 PASS, skip/fail/cancel: 0.
+  127/127 PASS, skip/fail/cancel: 0;
+- az `e0beee33d2078f03567e985f248e2476ec0da9e1` modellválasztós commit izolált
+  WSL-környezetben megismételt valós `gpt-5.6-sol` kapuja: PASS;
+- a megismételt kapu Node `22.23.1`, Codex CLI `0.145.0`, valós runtime,
+  thread-folytatás, approval, Federation és `gpt-image-2` artifact útvonala:
+  PASS;
+- a megismételt záró eredmény: `RESULT: PHASE 6.1 REAL CODEX, APPROVAL,
+  FEDERATION AND IMAGEGEN PASS`;
+- reprodukálható, explicit `--execute` production-canary eszköz Terra → Sol →
+  Terra, backup, audit, readiness, két Federation canary és tiltott modell
+  változatlansági ellenőrzéssel: PASS;
+- production-canary célzott regresszió: 3/3 PASS;
+- bővített Node 22.23.1 teljes regresszió: 130/130 PASS,
+  skip/fail/cancel: 0.
 
 Az éles systemd service Terra → Sol → Terra váltása és a Marveen 1.28.1
 Federation production canary még nem futott le. Ezért a jelölt továbbra sem
 tekinthető végleges 0.3.2 release-nek.
 
-RESULT: 0.3.2 MODEL SELECTION MOCK GATE PASS; WSL PRODUCTION CANARY REQUIRED.
+RESULT: 0.3.2 SOL RUNTIME GATE PASS; WSL PRODUCTION CANARY REQUIRED.
