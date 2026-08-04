@@ -383,7 +383,7 @@ Bridge ready, önmagában nem bizonyítja egy új Marveen-verzió kompatibilitá
 
 ### 0.3.2 WSL production canary
 
-Az aktivált `0.3.2` service és a telepített Marveen `1.28.1` végső kapuja
+Az aktivált `0.3.2` service és a telepített Marveen `1.28.2` végső kapuja
 alapértelmezésben csak olvasási preflightot végez:
 
 ```bash

@@ -180,7 +180,7 @@ Dátum: 2026-08-02
 - bővített Node 22.23.1 teljes regresszió: 130/130 PASS,
   skip/fail/cancel: 0.
 
-Az éles systemd service Terra → Sol → Terra váltása és a Marveen 1.28.1
+Az éles systemd service Terra → Sol → Terra váltása és a Marveen 1.28.2
 Federation production canary még nem futott le. Ezért a jelölt továbbra sem
 tekinthető végleges 0.3.2 release-nek.
 

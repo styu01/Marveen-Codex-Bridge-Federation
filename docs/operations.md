@@ -65,7 +65,7 @@ Node 22 alatt, nem root felhasználóként működik, és megköveteli:
 
 - az aktív `marveen-codex-bridge.service` 0.3.2 verziót;
 - az inaktív legacy `bela-codex-bridge.service` unitot;
-- a telepített Marveen pontosan `1.28.1` verzióját;
+- a telepített Marveen pontosan `1.28.2` verzióját;
 - privát, nem symlink admin-tokeneket és Bridge-konfigurációt;
 - az engedélyezett Federationt és a `codex` peert;
 - Terra kiinduló modellt és az élő modelllistában elérhető Sol modellt.

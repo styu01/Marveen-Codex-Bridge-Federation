@@ -39,7 +39,7 @@ Marveen → Codex → Marveen production canary ellenőrzését.
 
 ## Telepített 0.3.2 production canary
 
-Az aktivált Bridge és a Marveen 1.28.1 ellen először read-only preflightot,
+Az aktivált Bridge és a Marveen 1.28.2 ellen először read-only preflightot,
 majd explicit `--execute` kaput kell futtatni:
 
 ```bash
@@ -53,5 +53,5 @@ majd explicit `--execute` kaput kell futtatni:
 Elvárt zárás:
 
 ```text
-RESULT: 0.3.2 WSL SYSTEMD MODEL SELECTION AND MARVEEN 1.28.1 CANARY PASS
+RESULT: 0.3.2 WSL SYSTEMD MODEL SELECTION AND MARVEEN 1.28.2 CANARY PASS
 ```

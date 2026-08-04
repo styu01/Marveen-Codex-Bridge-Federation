@@ -28,7 +28,7 @@ const options = {
   marveenOrigin: 'http://127.0.0.1:3420',
   marveenTokenFile: join(home, 'marveen/store/.dashboard-token'),
   marveenRoot: join(home, 'marveen'),
-  expectedMarveenVersion: '1.28.1',
+  expectedMarveenVersion: '1.28.2',
   mainAgentId: 'bela',
   peerId: 'codex',
   remoteAgentId: 'programozo',
@@ -157,7 +157,7 @@ async function main() {
     remoteAgentId: options.remoteAgentId,
   })
   console.log(JSON.stringify(result))
-  console.log('RESULT: 0.3.2 WSL SYSTEMD MODEL SELECTION AND MARVEEN 1.28.1 CANARY PASS')
+  console.log('RESULT: 0.3.2 WSL SYSTEMD MODEL SELECTION AND MARVEEN 1.28.2 CANARY PASS')
 }
 
 const invoked = process.argv[1]

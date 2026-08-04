@@ -326,7 +326,7 @@ RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION AND IMAGEGEN PASS
 ```
 
 Ez hiteles Sol preflight, de nem azonos az éles systemd service és a Marveen
-1.28.1 ellen futó végső production canaryval. Az továbbra is release-kapu.
+1.28.2 ellen futó végső production canaryval. Az továbbra is release-kapu.
 
 A modellválasztót tartalmazó
 `e0beee33d2078f03567e985f248e2476ec0da9e1` commiton ugyanez a teljes valós
@@ -334,7 +334,7 @@ kapu 2026-08-02-án megismételve is PASS lett Node `22.23.1` és Codex CLI
 `0.145.0` alatt. Az eredmény `127/127` automatizált teszt, valamint valós Sol,
 approval, Federation és `gpt-image-2` artifact PASS volt, skip/fail/cancel
 nélkül. A providerfüggő modellválasztós commit tehát bizonyított; már csak a
-telepített service és a Marveen `1.28.1` végső production canaryja nyitott.
+telepített service és a Marveen `1.28.2` végső production canaryja nyitott.
 
 ### 7.2 Sol-tesztkapu és fennmaradó production ellenőrzés
 
@@ -370,7 +370,7 @@ belépési pont a `scripts/verify-phase7.sh --model ...`. A
 `verify-phase5.sh` történeti kapuk, ezért a jelenlegi ágon deprecation hibával
 leállnak. A release előtt még az éles service-en kell bizonyítani a Terra → Sol
 → Terra modellváltást, a readiness állapotot, a backupot, az auditot, a tiltott
-modell mutációmentes elutasítását és a Marveen 1.28.1 Federation canaryját. A
+modell mutációmentes elutasítását és a Marveen 1.28.2 Federation canaryját. A
 post-write automatikus rollback regressziós kapuja továbbra is kötelező.
 
 ### 7.3 Implementált modellválasztási szerződés
@@ -644,7 +644,7 @@ vagy amelyet más platformon/modellen futtattak.
 
 Aktuális állapot: az 1–5. pont elkészült, a valós Sol preflight PASS, a
 modellválasztó regressziós kapuja Node 22.23.1 alatt PASS. A 6. pontból az éles
-WSL systemd production canary és a Marveen 1.28.1 kompatibilitási canary még
+WSL systemd production canary és a Marveen 1.28.2 kompatibilitási canary még
 nyitott; ezek nélkül a 0.3.2 nem merge-elhető és nem tagelhető release-ként.
 
 ### Fázis C – többagentes specifikáció
