@@ -236,13 +236,15 @@ if (agent && (!agent.developerInstructions || agent.developerInstructions.trim()
 NODE
 chmod 0600 "${CONFIG_PATH}"
 "${NODE_REAL}" --input-type=module - \
-  "${RELEASE_ROOT}/src/config.mjs" "${CONFIG_PATH}" "${STATE_ROOT}" "${DATA_ROOT}" <<'NODE'
+  "${RELEASE_ROOT}/src/config.mjs" "${CONFIG_PATH}" "${STATE_ROOT}" "${DATA_ROOT}" "${HOME}" <<'NODE'
 import { pathToFileURL } from 'node:url'
+import { realpathSync } from 'node:fs'
 import { relative } from 'node:path'
 
-const [, , modulePath, configPath, stateRoot, dataRoot] = process.argv
+const [, , modulePath, configPath, stateRoot, dataRoot, homeRootInput] = process.argv
 const { loadServiceConfig } = await import(pathToFileURL(modulePath))
 const config = loadServiceConfig(configPath)
+const homeRoot = realpathSync(homeRootInput)
 const inside = (root, candidate) => {
   const rel = relative(root, candidate)
   return rel !== '' && !rel.startsWith('..') && !rel.startsWith('/')
@@ -254,8 +256,8 @@ if (!inside(dataRoot, config.codex.runtimeRoot)) {
   throw new Error('codex.runtimeRoot must stay inside the Bridge data root')
 }
 for (const agent of config.agents) {
-  if (!inside(dataRoot, agent.workspacePath)) {
-    throw new Error(`agent '${agent.id}' workspace must stay inside the Bridge data root`)
+  if (!inside(homeRoot, agent.workspacePath)) {
+    throw new Error(`agent '${agent.id}' workspace must stay inside HOME and must not equal HOME`)
   }
 }
 NODE
@@ -269,16 +271,48 @@ render_unit() {
   local template="${target}/systemd/marveen-codex-bridge-federation.service.in"
   [[ -d "${target}" && ! -L "${target}" && -f "${template}" ]] \
     || { echo "Release cannot render a systemd unit: ${target}" >&2; return 1; }
-  sed \
-    -e "s|@NODE_BIN@|${NODE_REAL}|g" \
-    -e "s|@RELEASE_ROOT@|${target}|g" \
-    -e "s|@CONFIG_PATH@|${CONFIG_PATH}|g" \
-    -e "s|@CONFIG_ROOT@|${CONFIG_ROOT}|g" \
-    -e "s|@BETTER_SQLITE3_PATH@|${target}/node_modules/better-sqlite3|g" \
-    -e "s|@STATE_ROOT@|${STATE_ROOT}|g" \
-    -e "s|@DATA_ROOT@|${DATA_ROOT}|g" \
-    -e "s|@CODEX_HOME@|${CODEX_HOME}|g" \
-    "${template}" > "${output}"
+  "${NODE_REAL}" --input-type=module - \
+    "${template}" "${output}" "${CONFIG_PATH}" \
+    "${NODE_REAL}" "${target}" "${CONFIG_PATH}" "${CONFIG_ROOT}" \
+    "${target}/node_modules/better-sqlite3" "${STATE_ROOT}" "${DATA_ROOT}" \
+    "${CODEX_HOME}" <<'NODE'
+import { readFileSync, writeFileSync } from 'node:fs'
+
+const [
+  , , templatePath, outputPath, configPath,
+  nodeBin, releaseRoot, installedConfigPath, configRoot,
+  betterSqlite3Path, stateRoot, dataRoot, codexHome,
+] = process.argv
+const config = JSON.parse(readFileSync(configPath, 'utf8'))
+const unitPath = (value) => {
+  if (typeof value !== 'string' || /[\u0000-\u001f\u007f]/.test(value)) {
+    throw new Error('systemd path contains a forbidden control character')
+  }
+  return JSON.stringify(value.replaceAll('%', '%%'))
+}
+const workspaces = config.agents
+  .map((agent) => `ReadWritePaths=${unitPath(agent.workspacePath)}`)
+  .join('\n')
+const replacements = new Map([
+  ['@NODE_BIN@', nodeBin],
+  ['@RELEASE_ROOT@', releaseRoot],
+  ['@CONFIG_PATH@', installedConfigPath],
+  ['@CONFIG_ROOT@', configRoot],
+  ['@BETTER_SQLITE3_PATH@', betterSqlite3Path],
+  ['@STATE_ROOT@', stateRoot],
+  ['@DATA_ROOT@', dataRoot],
+  ['@CODEX_HOME@', codexHome],
+  ['@AGENT_WORKSPACE_READ_WRITE_PATHS@', workspaces],
+])
+let unit = readFileSync(templatePath, 'utf8')
+unit = unit.replace(/@[A-Z0-9_]+@/g, (placeholder) => {
+  if (!replacements.has(placeholder)) {
+    throw new Error(`unknown systemd template placeholder: ${placeholder}`)
+  }
+  return replacements.get(placeholder)
+})
+writeFileSync(outputPath, unit, { mode: 0o600 })
+NODE
   chmod 0600 "${output}"
 }
 

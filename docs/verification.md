@@ -39,6 +39,10 @@ Marveen → Codex → Marveen production canary ellenőrzését.
 
 ## Telepített 0.3.2 production canary
 
+A végleges kapu 2026-08-04-én PASS eredménnyel lefutott. Az alábbi parancsok
+újratelepítés vagy lényeges környezetváltozás utáni ismételt ellenőrzésre
+szolgálnak.
+
 Az aktivált Bridge és a Marveen 1.28.2 ellen először read-only preflightot,
 majd explicit `--execute` kaput kell futtatni:
 
@@ -54,4 +58,11 @@ Elvárt zárás:
 
 ```text
 RESULT: 0.3.2 WSL SYSTEMD MODEL SELECTION AND MARVEEN 1.28.2 CANARY PASS
+```
+
+A lezárt production futás markerei:
+
+```text
+FEDERATION_V032_SOL_20260804073959_OK
+FEDERATION_V032_TERRA_20260804073959_OK
 ```

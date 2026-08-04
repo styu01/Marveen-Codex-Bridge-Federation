@@ -288,13 +288,14 @@ test('cutover script keeps rollback and independence invariants', () => {
   assert.match(source, /dist\/providers\/codex-provider\.js/)
   assert.match(
     installer,
-    /s\|@RELEASE_ROOT@\|\$\{target\}\|g/,
+    /\['@RELEASE_ROOT@', releaseRoot\]/,
   )
   assert.match(
     installer,
-    /s\|@BETTER_SQLITE3_PATH@\|\$\{target\}\/node_modules\/better-sqlite3\|g/,
+    /\['@BETTER_SQLITE3_PATH@', betterSqlite3Path\]/,
   )
-  assert.match(installer, /s\|@CONFIG_ROOT@\|\$\{CONFIG_ROOT\}\|g/)
+  assert.match(installer, /\['@CONFIG_ROOT@', configRoot\]/)
+  assert.match(installer, /ReadWritePaths=\$\{unitPath\(agent\.workspacePath\)\}/)
   assert.match(installer, /render_unit "\$\{RELEASE_ROOT\}" "\$\{UNIT_PATH\}\.candidate"/)
   assert.match(installer, /systemctl --user restart marveen-codex-bridge\.service/)
   assert.match(installer, /mv -f "\$\{UNIT_PATH\}\.rollback" "\$\{UNIT_PATH\}"/)

@@ -141,7 +141,10 @@ exec /usr/bin/id "$@"
 
   const legacyConfigPath = join(configRoot, 'config.json')
   const legacyConfig = JSON.parse(readFileSync(legacyConfigPath, 'utf8'))
+  const externalWorkspace = join(home, 'projects/programozo')
+  mkdirSync(externalWorkspace, { recursive: true })
   delete legacyConfig.codex.allowedModels
+  legacyConfig.agents[0].workspacePath = externalWorkspace
   legacyConfig.agents[0].developerInstructions = 'Megőrzendő 0.3.1 production szerepkör.'
   writeFileSync(legacyConfigPath, `${JSON.stringify(legacyConfig, null, 2)}\n`, {
     mode: 0o600,
@@ -176,6 +179,7 @@ exec /usr/bin/id "$@"
   assert.equal(existsSync(staleMarker), false)
   const preservedLegacyConfig = JSON.parse(readFileSync(legacyConfigPath, 'utf8'))
   assert.equal(preservedLegacyConfig.codex.allowedModels, undefined)
+  assert.equal(preservedLegacyConfig.agents[0].workspacePath, externalWorkspace)
   assert.equal(
     preservedLegacyConfig.agents[0].developerInstructions,
     'Megőrzendő 0.3.1 production szerepkör.',
@@ -183,6 +187,11 @@ exec /usr/bin/id "$@"
   assert.ok(
     readdirSync(join(data, 'releases'))
       .some((name) => name.startsWith('.0.3.2.superseded.')),
+  )
+  const replacementUnit = readFileSync(unitPath, 'utf8')
+  assert.match(
+    replacementUnit,
+    new RegExp(`ReadWritePaths=${JSON.stringify(externalWorkspace).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
   )
 })
 

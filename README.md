@@ -10,7 +10,7 @@ egy külön szolgáltatásban maradnak.
 > képet szerkezetileg és kriptográfiailag ellenőrzi, megváltoztathatatlan
 > artifactként tárolja, az eredményhez tartós receiptet kapcsol, és külön
 > hitelesített admin API-n teszi elérhetővé. A valódi GPT-image → validáció →
-> immutable artifact folyamat a 0.3.1 kiadási kapuban sikeresen lefutott.
+> immutable artifact folyamat a 0.3.2 kiadási kapuban sikeresen lefutott.
 
 ## Miért külön Bridge?
 
@@ -30,22 +30,21 @@ integrációt, vagy egy Bridge-frissítés módosítja a Béla rendszer forrás�
 
 | Elem | Validált érték |
 |---|---|
-| Stabil production Bridge | `0.3.1` |
-| Fejlesztési jelölt | `0.3.2` – draft PR, production canary előtt |
-| Marveen baseline | `1.25.1`, Federation v1 |
+| Stabil production Bridge | `0.3.2` |
+| Marveen baseline | `1.28.2`, Federation v1 |
 | Node.js | `22.23.1` |
 | Codex CLI | `0.145.0` |
-| Codex modell | `gpt-5.6-terra` production; `gpt-5.6-sol` valós izolált preflight PASS |
+| Codex modell | `gpt-5.6-terra` és `gpt-5.6-sol`, valós production PASS |
 | Képmodell | `gpt-image-2` |
 | Reasoning effort | `low`, `medium`, `high`, `xhigh` |
 | Federation mód | productionben validált `advisory` |
 | 0.3.2 automatizált teszt | `130/130 PASS`, skip/fail/cancel: `0` |
-| Élő production canary | 0.3.1: Béla → Codex → Béla PASS; 0.3.2: még nyitott |
+| Élő production canary | 0.3.2: Terra → Sol → Terra és Béla → Codex → Béla PASS |
 
-A 0.3.1 production szolgáltatás a kiadás lezárásakor `ready` állapotú volt,
-`database: true` és `runtime: true` jelzéssel. A régi Bridge leállítva, az új
-Federation Bridge aktív maradt. A 0.3.2 csak a végső WSL production canary
-után merge-elhető és tagelhető.
+A 0.3.2 production szolgáltatás a kiadás lezárásakor `ready` állapotú volt,
+`database: true` és `runtime: true` jelzéssel. A legacy Bridge leállítva, a
+Federation Bridge aktív maradt. A teljes automatizált kapu `130/130 PASS`, az
+éles read-only preflight és a Terra → Sol → Terra canary is PASS.
 
 ## Fő képességek
 
@@ -237,7 +236,7 @@ A Bridge a hálózati vagy processzhibát nem azonosítja sikerrel:
 - Codex CLI `0.145.0`;
 - aktív ChatGPT/Codex bejelentkezés;
 - Marveen Federation v1;
-- validált production baseline esetén Marveen `1.25.1`;
+- validált production baseline esetén Marveen `1.28.2`;
 - a natív `better-sqlite3` modulnak ugyanahhoz a Node 22 ABI-hoz kell készülnie.
 
 A Marveen és a Bridge használhat eltérő Node-verziót, de a Bridge systemd
@@ -266,7 +265,7 @@ Teljes WSL-verifikáció:
 ./scripts/verify-phase7.sh \
   --node-bin "$HOME/.nvm/versions/node/v22.23.1/bin/node" \
   --codex-bin "$HOME/.local/bin/codex" \
-  --clean-marveen-root "$HOME/bela-codex-preflight/marveen-upgrade-v1.25.1"
+  --clean-marveen-root "$HOME/bela-codex-preflight/marveen-upgrade-v1.28.2"
 ```
 
 A teljes kiadási kapu a mock teszteken túl valódi Codex-, approval-,
@@ -381,10 +380,10 @@ release-könyvtárra mutathatnak. Aktiválási hiba esetén az installer
 Marveen-frissítés előtt külön Federation contract teszt kötelező. Az, hogy a
 Bridge ready, önmagában nem bizonyítja egy új Marveen-verzió kompatibilitását.
 
-### 0.3.2 WSL production canary
+### 0.3.2 WSL production canary újraellenőrzése
 
-Az aktivált `0.3.2` service és a telepített Marveen `1.28.2` végső kapuja
-alapértelmezésben csak olvasási preflightot végez:
+Az éles kiadási kapu 2026-08-04-én sikeresen lefutott. Újratelepítés vagy
+környezetváltozás után először a csak olvasási preflight futtatandó:
 
 ```bash
 "$HOME/.nvm/versions/node/v22.23.1/bin/node" \
@@ -402,7 +401,9 @@ A canary Terra → Sol → Terra váltást, két readiness-ellenőrzést, backup
 auditot, mindkét modellel pontosan-egyszeri Marveen Federation választ és egy
 allowlisten kívüli modell állapotváltozás nélküli elutasítását követeli. Hiba
 esetén megpróbálja visszaállítani a kiinduló Terra modellt. Nem tartalmaz
-production hibainjektálást és nem módosítja a Marveen forrását.
+production hibainjektálást és nem módosítja a Marveen forrását. A lezárt
+kiadás production markerei és az ellenőrzési bizonyítékok a
+[TEST-RESULTS.md](TEST-RESULTS.md) fájlban találhatók.
 
 Részletes útmutató:
 [Telepítés, frissítés, rollback és eltávolítás](docs/operations.md).
@@ -430,6 +431,7 @@ Részletes útmutató:
 - [Üzemeltetés és rollback](docs/operations.md)
 - [Aktuális verifikációs kapu](docs/verification.md)
 - [Kiadási teszteredmények](TEST-RESULTS.md)
+- [Változásnapló](CHANGELOG.md)
 
 ## Licenc
 

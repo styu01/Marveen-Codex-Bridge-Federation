@@ -60,6 +60,10 @@ valamint egy nem üres módosítónév szükséges.
 
 ## 0.3.2 production canary
 
+A 0.3.2 kiadási canary 2026-08-04-én PASS eredménnyel lezárult. Az alábbi
+eljárás új telepítés vagy lényeges környezetváltozás ellenőrzésére marad a
+repositoryban.
+
 Az aktivált service végső WSL-kapuja külön eszközzel fut. A parancs kizárólag
 Node 22 alatt, nem root felhasználóként működik, és megköveteli:
 
@@ -132,3 +136,15 @@ service-állapotot.
 4. A konfigurációt, adatbázist és release-eket csak külön mentés után töröld.
 
 A legacy adapter karanténját és a Phase 0 mentést ne töröld automatikusan.
+
+## Lezáráskori helyreállítási pont
+
+A bizonyított production cutover mentése:
+
+```text
+~/.local/state/marveen-codex-bridge/update-backups/0.3.2-20260804T073940Z
+```
+
+Ezt a kiadás lezárása nem törli automatikusan. Csak külön, ellenőrzött
+karbantartás során távolítható el, miután a 0.3.2 hosszabb távú működése és egy
+másik, külső mentés megléte igazolt.

@@ -185,3 +185,62 @@ Federation production canary még nem futott le. Ezért a jelölt továbbra sem
 tekinthető végleges 0.3.2 release-nek.
 
 RESULT: 0.3.2 SOL RUNTIME GATE PASS; WSL PRODUCTION CANARY REQUIRED.
+
+## 0.3.2 WSL candidate r2 workspace-javítás
+
+Dátum: 2026-08-04
+
+- az első 0.3.2 production telepítési kísérlet a teljes 130/130 mock kapu után
+  fail-closed módon megállt, mert a meglévő `programozo` workspace a Bridge
+  adatgyökerén kívül volt;
+- a 0.3.1 automatikus rollbackje readiness-ellenőrzéssel sikeresen lezárult;
+- az indokolatlan adatgyökér-korlát helyett a workspace-nek a felhasználó
+  valódi HOME könyvtárán belül kell maradnia, és nem lehet maga a HOME;
+- a runtime változatlanul csak abszolút, létező, nem symlinkkel átirányított
+  workspace-t fogad el;
+- a systemd unit minden konfigurált agent workspace-éhez külön
+  `ReadWritePaths` bejegyzést generál, ezért a szolgáltatás nem kap írási
+  jogot a teljes HOME könyvtárra;
+- célzott installer regresszió: 3/3 PASS;
+- teljes, natív Node 22.23.1 kapu: 130/130 PASS,
+  skip/fail/cancel: 0.
+
+Az r2 jelölt éles Terra → Sol → Terra WSL production canaryja ekkor még
+hátra volt.
+
+RESULT: 0.3.2 CANDIDATE R2 MOCK GATE PASS; WSL PRODUCTION CANARY REQUIRED.
+
+## 0.3.2 végleges WSL production kiadási kapu
+
+Dátum: 2026-08-04
+
+- SHA-256 ellenőrzés: PASS;
+- teljes Node 22.23.1 regressziós kapu: `130/130 PASS`;
+- fail/skip/cancel: `0`;
+- standalone systemd service aktiválás: PASS;
+- read-only production preflight: PASS;
+- Marveen baseline: `1.28.2`, Federation v1;
+- Bridge: `0.3.2`, aktív és ready;
+- Terra → Sol → Terra modellváltás: PASS;
+- modellenkénti readiness, backup és audit: PASS;
+- Sol Federation canary: `messageId=400`, `replyId=401`,
+  `FEDERATION_V032_SOL_20260804073959_OK`;
+- Terra Federation canary: `messageId=402`, `replyId=403`,
+  `FEDERATION_V032_TERRA_20260804073959_OK`;
+- tiltott `gpt-5.5` modell konfiguráció-, backup- és auditmutáció nélküli
+  elutasítása: PASS;
+- automatikus 0.3.1 rollback az első, túl szigorú workspace-kaput tartalmazó
+  jelöltnél: PASS;
+- a javított r2 cutover során rollback nem történt;
+- aktív release:
+  `/home/kisss/.local/share/marveen-codex-bridge/releases/0.3.2`;
+- helyreállítási mentés:
+  `/home/kisss/.local/state/marveen-codex-bridge/update-backups/0.3.2-20260804T073940Z`.
+
+```text
+RESULT: 0.3.2 PRODUCTION CANARY READ-ONLY PREFLIGHT PASS
+RESULT: 0.3.2 WSL SYSTEMD MODEL SELECTION AND MARVEEN 1.28.2 CANARY PASS
+RESULT: MARVEEN CODEX BRIDGE 0.3.2 PRODUCTION CUTOVER SUCCESSFUL
+```
+
+RESULT: 0.3.2 RELEASE GATE PASS.

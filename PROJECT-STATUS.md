@@ -1,10 +1,10 @@
 # Marveen Codex Bridge Federation – projektállapot és átadási dokumentum
 
-**Utolsó frissítés:** 2026-08-02
+**Utolsó frissítés:** 2026-08-04
 
-**Aktuális stabil kiadás:** `0.3.1`
+**Aktuális stabil kiadás:** `0.3.2`
 
-**Aktuális fejlesztési jelölt:** `0.3.2` – modellválasztó kész, WSL production canary előtt
+**Projektállapot:** lezárt; a 0.3.2 éles production kapuja PASS
 
 **Elsődleges, bizonyított célplatform:** Linux / WSL2, systemd user service
 
@@ -34,14 +34,13 @@ Git-állapotot, a konfigurációt és a tényleges teszteredményt kell ellenőr
 | Elem | Érték |
 |---|---|
 | GitHub repository | `styu01/Marveen-Codex-Bridge-Federation` |
-| Stabil verzió | `0.3.1` |
-| GitHub `main` commit | `1ab82637c2da8d8785fd1d347f22d5c943be2978` |
-| GitHub tag | `v0.3.1` |
-| Git-fa SHA | `46fa1534e5e1470163bf53fa200a20072ca266ed` |
-| Release archívum | `Marveen-Codex-Bridge-v0.3.1.tar.gz` |
-| Release SHA-256 | `a9a15c81fc9789eba0c462a7e246c91dc0f7f559023648c305d0784587d2fbf8` |
+| Stabil verzió | `0.3.2` |
+| GitHub kiadási ág | `main` |
+| GitHub tag | `v0.3.2` |
+| Release archívum | `Marveen-Codex-Bridge-v0.3.2.tar.gz` |
+| Release checksum | `Marveen-Codex-Bridge-v0.3.2.tar.gz.sha256` |
 
-### Fontos helyi/GitHub eltérés
+### Korábbi 0.3.1 helyi/GitHub eltérés
 
 A fejlesztés végén a helyi release-branch és a GitHubon létrehozott release
 commit azonos forrásfát, de eltérő commitazonosítót kapott:
@@ -61,7 +60,7 @@ git fetch origin --tags
 git status --short --branch
 git rev-parse origin/main
 git rev-parse origin/main^{tree}
-git ls-remote origin refs/heads/main refs/tags/v0.3.1
+git ls-remote origin refs/heads/main refs/tags/v0.3.2
 ```
 
 Új fejlesztési ág csak tiszta munkafából és `origin/main` alapról készülhet.
@@ -77,7 +76,7 @@ megmaradt távoli branch történeti branch; új munka kizárólag az aktuális
 
 ## 3. Vezetői összefoglaló
 
-A `0.3.1` kiadás a vállalt Linux/WSL2 környezetben kész, telepített és valós
+A `0.3.2` kiadás a vállalt Linux/WSL2 környezetben kész, telepített és valós
 Marveen–Codex forgalommal ellenőrzött. Nem prototípus és nem csak mock teszten
 működik.
 
@@ -92,15 +91,18 @@ A kiadásban:
   pontosan-egyszeri Federation kézbesítés és a GPT-képgenerálás működik;
 - a telepítés, aktiválás és rollback fail-closed védelemmel rendelkezik;
 - a régi Bridge le van állítva, az új Federation Bridge volt aktív a kiadás
-  lezárásakor.
+  lezárásakor;
+- a `gpt-5.6-terra` és `gpt-5.6-sol` modellek közötti biztonságos váltás,
+  readiness, backup, audit és tiltott modell fail-closed elutasítása élesben
+  is bizonyított;
+- a meglévő, HOME-on belüli agent-workspace megmarad, a systemd service pedig
+  csak a konkrét konfigurált workspace-hez kap írási jogot.
 
-A projekt nincs „örökre befejezve”. A stabil `0.3.1` után három külön témát
-kell kezelni:
+A projekt ezzel a vállalt funkciókörrel lezárt. Az alábbi témák nem részei a
+0.3.2-nek, és csak külön, új projektként indíthatók:
 
-1. `0.3.2`: dashboard-artifact UI tisztítása és a `gpt-5.6-sol` valós
-   kompatibilitási tesztje;
-2. következő minor kiadás: legfeljebb három, egymástól elkülönített Codex-agent;
-3. macOS-port később, külön projektfázisban.
+1. legfeljebb három, egymástól elkülönített Codex-agent;
+2. macOS-port.
 
 Ezeket nem szabad egyetlen nagy módosításba összekeverni.
 
@@ -111,11 +113,11 @@ Ezeket nem szabad egyetlen nagy módosításba összekeverni.
 | Komponens | Ellenőrzött érték |
 |---|---|
 | Operációs környezet | WSL2 / Linux, systemd user service |
-| Marveen baseline | `1.25.1`, Federation v1 |
-| Bridge | `0.3.1` |
+| Marveen baseline | `1.28.2`, Federation v1 |
+| Bridge | `0.3.2` |
 | Node.js | pontosan `22.23.1` |
 | Codex CLI | `0.145.0` |
-| Bizonyított szöveges modell | `gpt-5.6-terra` |
+| Bizonyított szöveges modell | `gpt-5.6-terra`, `gpt-5.6-sol` |
 | Képmodell | `gpt-image-2` |
 | Reasoning effort | `low`, `medium`, `high`, `xhigh` |
 | Federation production mód | `advisory` |
@@ -124,11 +126,11 @@ A Marveen saját Node-verziója eltérhet a Bridge Node-verziójától. A Bridge
 systemd unitja a telepítéskor megadott Node 22 binárisra van rögzítve. A natív
 `better-sqlite3` modulnak ugyanahhoz a Node 22 ABI-hoz kell készülnie.
 
-### 4.2 Kiadási kapu
+### 4.2 Végleges 0.3.2 kiadási kapu
 
-A lezárt `0.3.1` kapu eredménye:
+A lezárt `0.3.2` kapu eredménye:
 
-- automatizált teszt: `124/124 PASS`;
+- automatizált teszt: `130/130 PASS`;
 - skip/fail/cancel: `0`;
 - valódi Codex App Server handshake és modellfuttatás: PASS;
 - thread-folytatás és idempotencia: PASS;
@@ -139,14 +141,17 @@ A lezárt `0.3.1` kapu eredménye:
 - kontrollált runtime-újraindítás: PASS;
 - előző beállítás pontos visszaállítása: PASS;
 - auditnapló: PASS;
-- végső Béla → Codex → Béla canary: PASS.
+- read-only production preflight: PASS;
+- Terra → Sol → Terra production modellváltás: PASS;
+- modellenkénti Béla → Codex → Béla exactly-once canary: PASS;
+- tiltott `gpt-5.5` modell mutációmentes elutasítása: PASS;
+- telepítési cutover automatikus rollback-védelemmel: PASS.
 
 A végső canary azonosítói:
 
 ```text
-messageId=352
-replyId=353
-marker=FEDERATION_V031_FINAL_20260801T110328Z_OK
+Sol:   messageId=400, replyId=401, marker=FEDERATION_V032_SOL_20260804073959_OK
+Terra: messageId=402, replyId=403, marker=FEDERATION_V032_TERRA_20260804073959_OK
 ```
 
 A kiadás lezárásakor mért szolgáltatásállapot:
@@ -162,7 +167,7 @@ Readiness:
 ```json
 {
   "status": "ready",
-  "bridgeVersion": "0.3.1",
+  "bridgeVersion": "0.3.2",
   "database": true,
   "runtime": true
 }
@@ -174,7 +179,13 @@ Readiness végpont az ellenőrzött telepítésen:
 http://127.0.0.1:3431/readyz
 ```
 
-## 5. A 0.3.1-ben elkészült fő képességek
+Az aktív release:
+
+```text
+/home/kisss/.local/share/marveen-codex-bridge/releases/0.3.2
+```
+
+## 5. A 0.3.2-ben lezárt fő képességek
 
 ### 5.1 Marveen Federation integráció
 
@@ -221,7 +232,7 @@ A mentés védelmei:
 - sikertelen restart esetén automatikus rollback;
 - kézi visszaállítás az előző beállításra.
 
-A `0.3.1` beállításkezelője szándékosan csak egy agentet fogad el. A
+A `0.3.2` beállításkezelője szándékosan csak egy agentet fogad el. A
 `src/agent-settings-manager.mjs` több helyen `agents.length === 1` feltételt
 követel. Emiatt a konfiguráció tömbszerkezete önmagában nem jelent kész
 többagentes támogatást.
@@ -256,7 +267,7 @@ Következmény: a dashboard képelőnézeti hibája nem jogosít fel az artifact
 háttérrendszer törlésére. A háttérfolyamat a képgenerálás biztonsági és
 integritási része.
 
-## 6. Jelenlegi ismert probléma: Képartifactok dashboard
+## 6. Lezárt probléma: Képartifactok dashboard
 
 ### 6.1 Megfigyelés
 
@@ -278,22 +289,21 @@ A 0.3.1 dashboardteszt csak a statikus HTML/JavaScript és a CSP-fejléc
 jelenlétét ellenőrizte. Valódi böngészőben nem próbálta betölteni a létrehozott
 `blob:` URL-t, ezért ezt az integrációs hibát nem fogta meg.
 
-### 6.3 Jóváhagyott termékdöntés a következő javításhoz
+### 6.3 Megvalósított termékdöntés
 
 A `0.3.2` kiadásban:
 
-- a „Képartifactok” dashboard-szekciót el kell rejteni vagy el kell távolítani;
-- az artifact darabszámot is el kell távolítani a dashboard összegző UI-ból,
-  ha nincs más felhasználói értéke;
-- a frontend ne kérje le feleslegesen az artifact-listát és bináris képeket;
+- a „Képartifactok” dashboard-szekció eltávolításra került;
+- az artifact darabszám kikerült a dashboard összegző UI-ból;
+- a frontend nem kéri le feleslegesen az artifact-listát és bináris képeket;
 - az artifact manager, adatbázis-migráció, regisztráló tool, validáció,
-  immutable tárolás, result receipt és admin API maradjon meg;
-- a meglévő artifactfájlokat nem szabad törölni;
-- a képgenerálás kiadási kapuja továbbra is kötelező.
+  immutable tárolás, result receipt és admin API megmaradt;
+- a meglévő artifactfájlok nem kerültek törlésre;
+- a képgenerálás kiadási kapuja változatlanul kötelező.
 
 Ez tisztítás, nem az imagegen funkció eltávolítása.
 
-### 6.4 A 0.3.2 fejlesztési jelölt állapota 2026-08-02-án
+### 6.4 A 0.3.2 végleges állapota
 
 Elkészült a dashboard artifact-részének forrásoldali eltávolítása:
 
@@ -306,14 +316,13 @@ Elkészült a dashboard artifact-részének forrásoldali eltávolítása:
   tárolás, result receipt és minden `/v1/artifacts` admin API változatlanul
   megmaradt.
 
-A pontos 0.3.1 baseline archívumon a Node 22.23.1 Phase 7 mock kapu
-`124/124 PASS` eredménnyel újra lefutott. A 0.3.2 jelölt célzott
-rollback-teszttel bővített kapuja `125/125 PASS`. Ez nem Sol- és nem
-production bizonyíték.
+A teljes Node 22.23.1 regressziós kapu `130/130 PASS`. A Sol valós runtime-
+kapu, az éles systemd aktiválás és a Terra → Sol → Terra production canary is
+PASS. A dashboard-hiba lezárt; az artifact backend változatlanul aktív.
 
 ## 7. `gpt-5.6-sol` validálás és biztonságos modellválasztás
 
-### 7.1 Jelenlegi tény
+### 7.1 Végleges tény
 
 A stabil `0.3.1` production kapu `gpt-5.6-terra` modellel futott le. A
 `0.3.2` pre-Sol jelölt (`15bd74c1eb1a4d938cf38551636359051dac4c65`)
@@ -325,18 +334,18 @@ Federation- és `gpt-image-2` artifact-folyamatot. A záró eredmény:
 RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION AND IMAGEGEN PASS
 ```
 
-Ez hiteles Sol preflight, de nem azonos az éles systemd service és a Marveen
-1.28.2 ellen futó végső production canaryval. Az továbbra is release-kapu.
+Ezt követően az éles systemd service és a Marveen 1.28.2 elleni végső
+production canary is PASS lett 2026-08-04-én.
 
 A modellválasztót tartalmazó
 `e0beee33d2078f03567e985f248e2476ec0da9e1` commiton ugyanez a teljes valós
 kapu 2026-08-02-án megismételve is PASS lett Node `22.23.1` és Codex CLI
 `0.145.0` alatt. Az eredmény `127/127` automatizált teszt, valamint valós Sol,
 approval, Federation és `gpt-image-2` artifact PASS volt, skip/fail/cancel
-nélkül. A providerfüggő modellválasztós commit tehát bizonyított; már csak a
-telepített service és a Marveen `1.28.2` végső production canaryja nyitott.
+nélkül. A providerfüggő modellválasztás és a telepített production service
+egyaránt bizonyított.
 
-### 7.2 Sol-tesztkapu és fennmaradó production ellenőrzés
+### 7.2 Sol-tesztkapu és production ellenőrzés
 
 A valós preflight a következő providerfüggő útvonalakat ellenőrizte; a
 modellváltási tranzakciót a 0.3.2 jelölt regressziós kapuja külön bizonyítja:
@@ -368,10 +377,10 @@ A repository jelenlegi valós preflightja paraméterezhető modellel. A támogat
 belépési pont a `scripts/verify-phase7.sh --model ...`. A
 `verify-phase2.sh`, `verify-phase3.sh`, `verify-phase4.sh` és
 `verify-phase5.sh` történeti kapuk, ezért a jelenlegi ágon deprecation hibával
-leállnak. A release előtt még az éles service-en kell bizonyítani a Terra → Sol
-→ Terra modellváltást, a readiness állapotot, a backupot, az auditot, a tiltott
-modell mutációmentes elutasítását és a Marveen 1.28.2 Federation canaryját. A
-post-write automatikus rollback regressziós kapuja továbbra is kötelező.
+leállnak. Az éles service-en a Terra → Sol → Terra modellváltás, a readiness,
+a backup, az audit, a tiltott modell mutációmentes elutasítása és a Marveen
+1.28.2 Federation canaryja PASS. A post-write automatikus rollback
+regressziós kapuja szintén PASS.
 
 ### 7.3 Implementált modellválasztási szerződés
 
@@ -623,9 +632,9 @@ működik.
 Nem szabad PASS-ként dokumentálni olyan kaput, amely csak „várhatóan működik”
 vagy amelyet más platformon/modellen futtattak.
 
-## 12. Javasolt következő végrehajtási sorrend
+## 12. Lezárás és külön jövőbeli projektek
 
-### Fázis A – `0.3.2` pontos specifikáció
+### Elvégzett Fázis A – `0.3.2` pontos specifikáció
 
 1. A production artifact UI-hiba rövid diagnosztikája.
 2. Döntés rögzítése: UI eltávolítás, backend megtartás.
@@ -633,7 +642,7 @@ vagy amelyet más platformon/modellen futtattak.
 4. Modellválasztás API/UI szerződésének meghatározása.
 5. Elfogadási kritériumok és regressziós lista.
 
-### Fázis B – `0.3.2` implementáció
+### Elvégzett Fázis B – `0.3.2` implementáció
 
 1. Artifact frontend és összegző UI eltávolítása.
 2. Felesleges frontend artifact-kérések megszüntetése.
@@ -642,10 +651,9 @@ vagy amelyet más platformon/modellen futtattak.
 5. Settings backup/restart/rollback/audit kiterjesztése modellre.
 6. Teljes regresszió, WSL production canary és release.
 
-Aktuális állapot: az 1–5. pont elkészült, a valós Sol preflight PASS, a
-modellválasztó regressziós kapuja Node 22.23.1 alatt PASS. A 6. pontból az éles
-WSL systemd production canary és a Marveen 1.28.2 kompatibilitási canary még
-nyitott; ezek nélkül a 0.3.2 nem merge-elhető és nem tagelhető release-ként.
+Aktuális állapot: mind a hat pont elkészült. A teljes regresszió, az éles WSL
+systemd production canary és a Marveen 1.28.2 kompatibilitási canary PASS. A
+0.3.2 kiadás lezárt.
 
 ### Fázis C – többagentes specifikáció
 
@@ -662,31 +670,25 @@ Külön minor kiadás, teljes isolation- és recovery-kapuval.
 
 Elhalasztva. Nem része a következő fejlesztési beszélgetésnek.
 
-## 13. Új Work-beszélgetés indító szövege
+## 13. Újranyitási szabály
 
-Az új beszélgetésben ezt a repositoryt és ezt a fájlt kell megadni, majd elég
-az alábbi kérés:
-
-> Folytassuk a Marveen Codex Bridge Federation fejlesztését. Először olvasd el
-> a repository `PROJECT-STATUS.md`, `README.md` és `TEST-RESULTS.md` fájlját.
-> Az aktuális stabil alap a GitHub `main` ágon lévő 0.3.1. Most kizárólag a
-> 0.3.2 fejlesztési specifikációját készítsd el: a Képartifactok dashboard UI
-> eltávolítása a háttérfolyamat megtartásával, a `gpt-5.6-sol` valós
-> Bridge-runtime tesztje, és siker esetén a biztonságos modellválasztás. A
-> többagentes fejlesztést és a macOS-portot még ne implementáld.
+Új fejlesztés csak külön céllal és új scope-pal indulhat. Kötelező kiindulópont
+a GitHub `main` ágán lévő stabil `0.3.2`, valamint a `PROJECT-STATUS.md`,
+`README.md`, `TEST-RESULTS.md` és `CHANGELOG.md`. A többagentes támogatást és a
+macOS-portot nem szabad karbantartási javításnak álcázva ebbe a lezárt kiadásba
+visszakeverni.
 
 ## 14. Rövid ellenőrzőlista a következő AI számára
 
 Mielőtt bármit módosítasz, válaszold meg forrásból:
 
-- valóban `origin/main`/`0.3.1` az alapod?
+- valóban `origin/main`/`0.3.2` az alapod?
 - tiszta a munkafa?
 - a Bridge Node 22 környezete külön van a Marveen Node környezetétől?
-- megértetted, hogy a képgenerálás működik, csak a dashboard UI problémás és
-  felesleges?
+- megértetted, hogy a képgenerálás működik, az artifact backend megmaradt, a
+  dashboard UI pedig szándékosan nem jelenít meg artifactokat?
 - megértetted, hogy az artifact backendet nem szabad törölni?
-- megértetted, hogy a Sol még nem támogatottként bizonyított?
-- van valós Sol teszt- és rollback-terved?
+- megőrzöd a Terra/Sol production kaput és a rollback-regressziót?
 - megértetted, hogy a jelenlegi settings manager pontosan egy agentre épül?
 - nem kevered a 0.3.2 javítást a háromagentes vagy macOS-fejlesztéssel?
 - minden új állításhoz van futtatott teszt vagy konkrét forrásbizonyíték?
