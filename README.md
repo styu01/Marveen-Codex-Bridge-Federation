@@ -1,4 +1,4 @@
-# Marveen Codex Bridge Federation 0.3.1
+# Marveen Codex Bridge Federation 0.3.2
 
 Önálló, frissítésálló Federation Bridge a Marveen/Béla és a valódi OpenAI
 Codex CLI között. A Bridge a Marveenben egy föderált `programozo` agentet tesz
@@ -8,9 +8,9 @@ egy külön szolgáltatásban maradnak.
 > **Kiemelt képesség: működő AI-képgenerálás.** A Codex-agent a beépített
 > `gpt-image-2` képességgel valódi PNG-képet tud létrehozni. A Bridge a kész
 > képet szerkezetileg és kriptográfiailag ellenőrzi, megváltoztathatatlan
-> artifactként tárolja, majd az admin dashboardon előnézetként is megjeleníti.
-> A valódi GPT-image → artifact → dashboard folyamat a 0.3.1 kiadási kapuban
-> sikeresen lefutott.
+> artifactként tárolja, az eredményhez tartós receiptet kapcsol, és külön
+> hitelesített admin API-n teszi elérhetővé. A valódi GPT-image → validáció →
+> immutable artifact folyamat a 0.3.2 kiadási kapuban sikeresen lefutott.
 
 ## Miért külön Bridge?
 
@@ -30,20 +30,21 @@ integrációt, vagy egy Bridge-frissítés módosítja a Béla rendszer forrás�
 
 | Elem | Validált érték |
 |---|---|
-| Bridge | `0.3.1` |
-| Marveen baseline | `1.25.1`, Federation v1 |
+| Stabil production Bridge | `0.3.2` |
+| Marveen baseline | `1.28.2`, Federation v1 |
 | Node.js | `22.23.1` |
 | Codex CLI | `0.145.0` |
-| Codex modell | `gpt-5.6-terra` |
+| Codex modell | `gpt-5.6-terra` és `gpt-5.6-sol`, valós production PASS |
 | Képmodell | `gpt-image-2` |
 | Reasoning effort | `low`, `medium`, `high`, `xhigh` |
 | Federation mód | productionben validált `advisory` |
-| Automatizált teszt | `124/124 PASS`, skip/fail/cancel: `0` |
-| Élő canary | Béla → Codex → Béla PASS |
+| 0.3.2 automatizált teszt | `130/130 PASS`, skip/fail/cancel: `0` |
+| Élő production canary | 0.3.2: Terra → Sol → Terra és Béla → Codex → Béla PASS |
 
-A production szolgáltatás a kiadás lezárásakor `ready` állapotú volt,
-`database: true` és `runtime: true` jelzéssel. A régi Bridge leállítva, az új
-Federation Bridge aktív maradt.
+A 0.3.2 production szolgáltatás a kiadás lezárásakor `ready` állapotú volt,
+`database: true` és `runtime: true` jelzéssel. A legacy Bridge leállítva, a
+Federation Bridge aktív maradt. A teljes automatizált kapu `130/130 PASS`, az
+éles read-only preflight és a Terra → Sol → Terra canary is PASS.
 
 ## Fő képességek
 
@@ -71,7 +72,8 @@ A képalkotás nem szimuláció és nem külön Marveen-plugin. A folyamat:
    PNG-signature-t, chunkokat, CRC-ket, dimenziót, pixelszámot és SHA-256-ot;
 6. a fájl egyedi artifact ID alatt, `0400` jogosultsággal immutable másolatként
    kerül a Bridge saját tárolójába;
-7. a dashboard hitelesített artifact API-n keresztül előnézetet jelenít meg.
+7. a Federation eredmény tartós artifact receiptet kap, az admin API pedig
+   hitelesítetten elérhetővé teszi a metaadatot és a validált bináris tartalmat.
 
 Alapértelmezett korlátok:
 
@@ -103,12 +105,18 @@ Fontos: a kijelölt workspace-en belüli, sandbox által megengedett fájlírás
 feltétlenül generál külön approvalt. A broker nem helyettesíti a Codex saját
 sandboxát, hanem azzal együtt működik.
 
-### Szerepkör- és effort-kezelés
+### Modell-, szerepkör- és effort-kezelés
 
-A 0.3.1-ben az admin dashboardon módosítható az egyetlen `programozo` agent:
+A 0.3.2-ben az admin dashboardon módosítható az egyetlen `programozo` agent:
 
 - teljes `developerInstructions` szerepköre;
+- Codex modellje: `gpt-5.6-terra` vagy `gpt-5.6-sol`;
 - reasoning effortja: `low`, `medium`, `high` vagy `xhigh`.
+
+A dashboardon megjelenő modelllista nem statikus klienslista. A szerver az
+explicit `codex.allowedModels` engedélylista és az élő Codex App Server
+`model/list` válaszának metszetét adja vissza. A kliens által beküldött
+tetszőleges modellnév nem menthető el.
 
 A szerepkör minden új Codex-thread fejlesztői utasításának része, ezért ez
 határozza meg az agent szakmai fókuszát és működési kereteit. Nem egyszerű
@@ -118,6 +126,8 @@ A beállításváltás védelmei:
 
 - aktuális értékek megjelenítése;
 - üres vagy hibás szerepkör elutasítása;
+- allowlisten kívüli vagy a Codex-fiókban nem elérhető modell elutasítása még
+  backup, fájlírás és runtime-leállítás előtt;
 - kizárólag a négy támogatott effort fogadható el;
 - kötelező vizuális megerősítés;
 - kötelező admin bearer token;
@@ -125,10 +135,16 @@ A beállításváltás védelmei:
 - atomi konfigurációcsere;
 - módosítás előtti privát biztonsági másolat;
 - kontrollált Codex runtime-újraindítás;
-- a régi thread érvénytelenítése, hogy ne maradjon kevert konfiguráció;
+- readiness ellenőrzés az új konfigurációval;
+- a régi thread érvénytelenítése csak sikeres restart és readiness után, hogy
+  ne maradjon kevert konfiguráció;
 - visszaállítás az előző konfigurációra;
-- sikertelen restart esetén automatikus konfiguráció-rollback;
-- auditnapló: módosító, időpont, művelet és előtte/utána hash.
+- sikertelen restart esetén automatikus konfiguráció-rollback, az előző modell
+  és thread megtartásával;
+- ha az előző runtime sem állítható vissza, külön `runtime_rollback_failed`
+  503-as hiba és auditjelzés készül; ezt nem jelenti ártalmatlan rollbackként;
+- auditnapló: módosító, időpont, művelet, modell- és effort-változás, valamint
+  a szerepkör előtte/utána hash-e.
 
 Az auditnapló szándékosan nem tárolja el ismét a teljes szerepkörszöveget.
 
@@ -146,8 +162,7 @@ A dashboard megjeleníti:
 - inbox és dead outbox darabszám;
 - függő approvalok;
 - legutóbbi Codex-runok és állapotuk;
-- létrehozott képartifactok és előnézetük;
-- agentnév, modell és aktuális reasoning effort;
+- agentnév, szerveroldalon validált modellválasztó és aktuális reasoning effort;
 - aktuális developerInstructions;
 - beállításváltozások auditnaplója;
 - az előző agentbeállítás visszaállításának lehetősége.
@@ -221,7 +236,7 @@ A Bridge a hálózati vagy processzhibát nem azonosítja sikerrel:
 - Codex CLI `0.145.0`;
 - aktív ChatGPT/Codex bejelentkezés;
 - Marveen Federation v1;
-- validált production baseline esetén Marveen `1.25.1`;
+- validált production baseline esetén Marveen `1.28.2`;
 - a natív `better-sqlite3` modulnak ugyanahhoz a Node 22 ABI-hoz kell készülnie.
 
 A Marveen és a Bridge használhat eltérő Node-verziót, de a Bridge systemd
@@ -230,9 +245,9 @@ unitja mindig a telepítéskor megadott Node 22 binárisra van rögzítve.
 ## Csomag ellenőrzése
 
 ```bash
-sha256sum -c Marveen-Codex-Bridge-v0.3.1.tar.gz.sha256
-tar -xzf Marveen-Codex-Bridge-v0.3.1.tar.gz
-cd marveen-codex-bridge-0.3.1
+sha256sum -c Marveen-Codex-Bridge-v0.3.2.tar.gz.sha256
+tar -xzf Marveen-Codex-Bridge-v0.3.2.tar.gz
+cd marveen-codex-bridge-0.3.2
 ```
 
 Forrásellenőrzés:
@@ -250,7 +265,7 @@ Teljes WSL-verifikáció:
 ./scripts/verify-phase7.sh \
   --node-bin "$HOME/.nvm/versions/node/v22.23.1/bin/node" \
   --codex-bin "$HOME/.local/bin/codex" \
-  --clean-marveen-root "$HOME/bela-codex-preflight/marveen-upgrade-v1.25.1"
+  --clean-marveen-root "$HOME/bela-codex-preflight/marveen-upgrade-v1.28.2"
 ```
 
 A teljes kiadási kapu a mock teszteken túl valódi Codex-, approval-,
@@ -338,7 +353,7 @@ Elvárt válasz:
 ```json
 {
   "status": "ready",
-  "bridgeVersion": "0.3.1",
+  "bridgeVersion": "0.3.2",
   "database": true,
   "runtime": true
 }
@@ -365,15 +380,42 @@ release-könyvtárra mutathatnak. Aktiválási hiba esetén az installer
 Marveen-frissítés előtt külön Federation contract teszt kötelező. Az, hogy a
 Bridge ready, önmagában nem bizonyítja egy új Marveen-verzió kompatibilitását.
 
+### 0.3.2 WSL production canary újraellenőrzése
+
+Az éles kiadási kapu 2026-08-04-én sikeresen lefutott. Újratelepítés vagy
+környezetváltozás után először a csak olvasási preflight futtatandó:
+
+```bash
+"$HOME/.nvm/versions/node/v22.23.1/bin/node" \
+  scripts/production-canary-0.3.2.mjs
+```
+
+Csak sikeres preflight után futtatható a módosító kapu:
+
+```bash
+"$HOME/.nvm/versions/node/v22.23.1/bin/node" \
+  scripts/production-canary-0.3.2.mjs --execute
+```
+
+A canary Terra → Sol → Terra váltást, két readiness-ellenőrzést, backupot,
+auditot, mindkét modellel pontosan-egyszeri Marveen Federation választ és egy
+allowlisten kívüli modell állapotváltozás nélküli elutasítását követeli. Hiba
+esetén megpróbálja visszaállítani a kiinduló Terra modellt. Nem tartalmaz
+production hibainjektálást és nem módosítja a Marveen forrását. A lezárt
+kiadás production markerei és az ellenőrzési bizonyítékok a
+[TEST-RESULTS.md](TEST-RESULTS.md) fájlban találhatók.
+
 Részletes útmutató:
 [Telepítés, frissítés, rollback és eltávolítás](docs/operations.md).
 
 ## Tudatos korlátok
 
-- A 0.3.1 egyetlen konfigurált Codex-agentet kezel: `programozo`.
+- A 0.3.2 egyetlen konfigurált Codex-agentet kezel: `programozo`.
 - Az agent megjelenített neve még nem szerkeszthető a dashboardon.
 - Több föderált Codex-agent kezelése későbbi verzió feladata.
 - Képartifactként ebben a verzióban csak PNG regisztrálható.
+- A dashboard nem jelenít meg artifact-listát vagy képelőnézetet; az artifact
+  backend, a validáció, az immutable tárolás, a receipt és az admin API megmarad.
 - Az admin dashboard kizárólag loopbackről érhető el; nincs távoli admin UI.
 - A Bridge nem kap közvetlen hozzáférést a Marveen memóriájához, kanbanjához
   vagy belső SQLite-adatbázisához.
@@ -387,7 +429,9 @@ Részletes útmutató:
 - [Approval és dinamikus tool architektúra](docs/phase5-approval-and-tools.md)
 - [Képalkotás és artifact pipeline](docs/phase5.2-imagegen-and-artifacts.md)
 - [Üzemeltetés és rollback](docs/operations.md)
+- [Aktuális verifikációs kapu](docs/verification.md)
 - [Kiadási teszteredmények](TEST-RESULTS.md)
+- [Változásnapló](CHANGELOG.md)
 
 ## Licenc
 

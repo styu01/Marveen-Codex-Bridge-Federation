@@ -1,6 +1,5 @@
 const state = {
   token: sessionStorage.getItem('marveenCodexBridgeToken') || '',
-  artifactUrls: [],
   settings: null,
 }
 
@@ -47,7 +46,6 @@ function renderCards(summary) {
     ['Dead outbox', summary.counts.outboxDead],
     ['Függő approval', summary.counts.pendingApprovals],
     ['Futások', summary.counts.runs],
-    ['Artifactok', summary.counts.artifacts],
   ]
   byId('summary-cards').innerHTML = cards.map(([label, value]) => (
     `<article class="card"><span class="muted">${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`
@@ -67,6 +65,10 @@ function renderSettings(settings) {
     `<span>Modell: <strong>${escapeHtml(settings.model)}</strong></span>`,
     `<span>Aktuális effort: <strong>${escapeHtml(settings.reasoningEffort)}</strong></span>`,
   ].join('')
+  byId('settings-model').innerHTML = settings.selectableModels
+    .map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`)
+    .join('')
+  byId('settings-model').value = settings.model
   byId('settings-effort').value = settings.reasoningEffort
   byId('settings-role').value = settings.developerInstructions
   byId('restore-settings').disabled = !settings.canRestore
@@ -74,34 +76,14 @@ function renderSettings(settings) {
 
 function renderSettingsAudit(records) {
   byId('settings-audit').innerHTML = records.length
-    ? records.map((record) => `<tr><td>${new Date(record.timestampMs).toLocaleString('hu-HU')}</td><td>${escapeHtml(record.actor)}</td><td>${escapeHtml(record.action)}</td><td>${escapeHtml(record.changes?.reasoningEffort?.before ?? '—')} → ${escapeHtml(record.changes?.reasoningEffort?.after ?? '—')}</td><td>${escapeHtml(record.outcome)}</td></tr>`).join('')
-    : '<tr><td colspan="5" class="muted">Még nincs beállításmódosítás.</td></tr>'
+    ? records.map((record) => `<tr><td>${new Date(record.timestampMs).toLocaleString('hu-HU')}</td><td>${escapeHtml(record.actor)}</td><td>${escapeHtml(record.action)}</td><td>${escapeHtml(record.changes?.model?.before ?? '—')} → ${escapeHtml(record.changes?.model?.after ?? '—')}</td><td>${escapeHtml(record.changes?.reasoningEffort?.before ?? '—')} → ${escapeHtml(record.changes?.reasoningEffort?.after ?? '—')}</td><td>${escapeHtml(record.outcome)}</td></tr>`).join('')
+    : '<tr><td colspan="6" class="muted">Még nincs beállításmódosítás.</td></tr>'
 }
 
 function renderRuns(runs) {
   byId('runs').innerHTML = runs.length
     ? runs.map((run) => `<tr><td>${escapeHtml(run.agentId)}</td><td>${escapeHtml(run.model)}</td><td>${escapeHtml(run.reasoningEffort)}</td><td class="state">${escapeHtml(run.state)}</td><td>${escapeHtml(run.runId.slice(0, 12))}</td><td>${new Date(run.updatedAtMs).toLocaleString('hu-HU')}</td></tr>`).join('')
     : '<tr><td colspan="6" class="muted">Nincs futás.</td></tr>'
-}
-
-async function artifactImage(artifact) {
-  const response = await fetch(`/v1/artifacts/${encodeURIComponent(artifact.artifactId)}/content`, {
-    headers: { authorization: `Bearer ${state.token}` },
-  })
-  if (!response.ok) return null
-  const url = URL.createObjectURL(await response.blob())
-  state.artifactUrls.push(url)
-  return url
-}
-
-async function renderArtifacts(artifacts) {
-  state.artifactUrls.forEach((url) => URL.revokeObjectURL(url))
-  state.artifactUrls = []
-  const views = await Promise.all(artifacts.slice(0, 12).map(async (artifact) => {
-    const image = await artifactImage(artifact)
-    return `<article class="artifact">${image ? `<img src="${image}" alt="">` : ''}<div><strong>${escapeHtml(artifact.workspaceRelativePath)}</strong><br><span class="muted">${escapeHtml(artifact.width)}×${escapeHtml(artifact.height)}</span></div></article>`
-  }))
-  byId('artifacts').innerHTML = views.join('') || '<p class="muted">Nincs képartifact.</p>'
 }
 
 async function decideApproval(approvalId, decision) {
@@ -119,11 +101,10 @@ function renderApprovals(approvals) {
 }
 
 async function refresh() {
-  const [summary, runs, approvals, artifacts, settings, audit] = await Promise.all([
+  const [summary, runs, approvals, settings, audit] = await Promise.all([
     api('/v1/dashboard/summary'),
     optionalData('/v1/runs?limit=100'),
     optionalData('/v1/approvals?state=pending'),
-    optionalData('/v1/artifacts'),
     api('/v1/dashboard/agent-settings'),
     api('/v1/dashboard/agent-settings/audit?limit=100'),
   ])
@@ -133,7 +114,6 @@ async function refresh() {
   renderApprovals(approvals)
   renderSettings(settings.data)
   renderSettingsAudit(audit.data)
-  await renderArtifacts(artifacts)
   setConnected(true)
 }
 
@@ -147,6 +127,7 @@ function setSettingsBusy(busy, message = '') {
 async function saveSettings(event) {
   event.preventDefault()
   const actor = byId('settings-actor').value.trim()
+  const model = byId('settings-model').value
   const developerInstructions = byId('settings-role').value
   const reasoningEffort = byId('settings-effort').value
   if (!actor || !developerInstructions.trim()) {
@@ -154,14 +135,14 @@ async function saveSettings(event) {
     return
   }
   const confirmed = window.confirm(
-    `Biztosan mented a szerepkört és az effortot (${state.settings.reasoningEffort} → ${reasoningEffort})? A régi Codex-thread lezárul, a runtime újraindul.`,
+    `Biztosan mented a modellt (${state.settings.model} → ${model}), a szerepkört és az effortot (${state.settings.reasoningEffort} → ${reasoningEffort})? Sikeres readiness után a régi Codex-thread lezárul.`,
   )
   if (!confirmed) return
   setSettingsBusy(true, 'Mentés és runtime-újraindítás…')
   try {
     await api('/v1/dashboard/agent-settings', {
       method: 'PUT',
-      body: JSON.stringify({ actor, developerInstructions, reasoningEffort, confirm: true }),
+      body: JSON.stringify({ actor, model, developerInstructions, reasoningEffort, confirm: true }),
     })
     await refresh()
     byId('settings-status').textContent = 'Mentve. A runtime újraindult, a régi thread lezárult.'

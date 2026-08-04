@@ -21,6 +21,7 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=@CONFIG_ROOT@ @STATE_ROOT@ @DATA_ROOT@ @CODEX_HOME@
+@AGENT_WORKSPACE_READ_WRITE_PATHS@
 ReadOnlyPaths=@CONFIG_ROOT@/admin.token @CONFIG_ROOT@/marveen-inbound.token @CONFIG_ROOT@/marveen-outbound.token @CONFIG_ROOT@/marveen-pairing.env
 UMask=0077
 

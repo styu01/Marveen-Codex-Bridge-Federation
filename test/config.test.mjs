@@ -76,6 +76,7 @@ test('private file-based configuration loads without exposing tokens', (t) => {
   assert.equal(config.peers[0].inboundToken.startsWith('inbound-token'), true)
   assert.equal(config.storage.database, join(env.paths.root, 'state', 'federation.sqlite3'))
   assert.equal(config.codex.expectedVersion, '0.145.0')
+  assert.deepEqual(config.codex.allowedModels, ['gpt-5.6-terra', 'gpt-5.6-sol'])
   assert.equal(config.agents[0].sandboxMode, 'read-only')
   const publicView = JSON.stringify(publicConfig(config))
   assert.doesNotMatch(publicView, /admin-token|inbound-token|outbound-token/)
@@ -138,6 +139,25 @@ test('duplicate agents and duplicate peers fail closed', (t) => {
     peers: [...env.input.peers, { ...env.input.peers[0] }],
   })
   assert.throws(() => loadServiceConfig(env.paths.config), /duplicate peer/)
+})
+
+test('model allowlist is explicit, unique and contains every configured agent model', (t) => {
+  const env = setup(t)
+  env.save({
+    ...env.input,
+    codex: { ...env.input.codex, allowedModels: ['gpt-5.6-terra', 'gpt-5.6-terra'] },
+  })
+  assert.throws(() => loadServiceConfig(env.paths.config), /must not contain duplicates/)
+  env.save({
+    ...env.input,
+    codex: { ...env.input.codex, allowedModels: ['gpt-5.6-sol'] },
+  })
+  assert.throws(() => loadServiceConfig(env.paths.config), /not present in codex\.allowedModels/)
+  env.save({
+    ...env.input,
+    codex: { ...env.input.codex, allowedModels: ['../../unsafe'] },
+  })
+  assert.throws(() => loadServiceConfig(env.paths.config), /invalid model name/)
 })
 
 test('workspace path must be absolute, real and free of symlink traversal', (t) => {

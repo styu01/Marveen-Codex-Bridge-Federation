@@ -51,6 +51,7 @@ function setup(t, overrides = {}) {
       binary: fakeCodex,
       expectedVersion: '0.145.0',
       runtimeRoot,
+      allowedModels: ['gpt-5.6-terra', 'gpt-5.6-sol'],
       startupTimeoutMs: 5_000,
       requestTimeoutMs: 5_000,
       turnTimeoutMs: 5_000,
@@ -91,6 +92,12 @@ test('real App Server protocol handshake and persistent idempotent run succeed',
   assert.equal(runtime.manifestAgents()[0].id, 'programozo')
   assert.equal(runtime.manifestAgents()[0].model, 'gpt-5.6-terra')
   assert.equal(runtime.manifestAgents()[0].reasoningEffort, 'high')
+  assert.deepEqual(runtime.selectableModels(), ['gpt-5.6-terra', 'gpt-5.6-sol'])
+  assert.equal(runtime.assertModelSelectable('gpt-5.6-sol'), 'gpt-5.6-sol')
+  assert.throws(
+    () => runtime.assertModelSelectable('gpt-5.5'),
+    (error) => error.code === 'model_not_allowed' && error.status === 400,
+  )
   const first = await runtime.run({
     agentId: 'programozo',
     prompt: 'PHASE4_RUNTIME_OK',

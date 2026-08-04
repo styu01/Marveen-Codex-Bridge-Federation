@@ -164,6 +164,7 @@ required_files=(
   src/inbox-orchestrator.mjs
   src/main.mjs
   src/marveen-pairing.mjs
+  src/production-canary.mjs
   src/runtime-loader.mjs
   src/service.mjs
   src/sqlite-driver.mjs
@@ -180,9 +181,11 @@ required_files=(
   test/main-process.test.mjs
   test/phase5-approval-tools.test.mjs
   test/phase7-installer.test.mjs
+  test/production-canary.test.mjs
   test/federation-cutover-api.test.mjs
   test/service-e2e.test.mjs
   test/sqlite-driver-parity.test.mjs
+  scripts/production-canary-0.3.2.mjs
 )
 for file in "${required_files[@]}"; do
   [[ -f "${SOURCE_ROOT}/${file}" ]] \
@@ -197,7 +200,7 @@ NODE_OPTIONS=--no-warnings "${NODE_BIN}" -e '
   const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json")))
   const lock = JSON.parse(fs.readFileSync(path.join(root, "package-lock.json")))
   const example = JSON.parse(fs.readFileSync(path.join(root, "config/config.example.json")))
-  if (pkg.version !== "0.3.1") throw new Error("wrong package version")
+  if (pkg.version !== "0.3.2") throw new Error("wrong package version")
   if (pkg.dependencies?.["better-sqlite3"] !== "11.10.0") {
     throw new Error("better-sqlite3 must be pinned")
   }
@@ -209,6 +212,7 @@ NODE_OPTIONS=--no-warnings "${NODE_BIN}" -e '
     || example.systemId !== "codex"
     || example.codex?.imageGenerationRequired !== true
     || example.codex?.imageModel !== "gpt-image-2"
+    || JSON.stringify(example.codex?.allowedModels) !== JSON.stringify(["gpt-5.6-terra", "gpt-5.6-sol"])
   ) {
     throw new Error("invalid example config")
   }
@@ -245,17 +249,17 @@ TEST_LOG="$(mktemp)"
     NODE_OPTIONS=--no-warnings \
     "${NODE_BIN}" --test --test-concurrency=1 test/*.test.mjs
 ) | tee "${TEST_LOG}"
-grep -Eq '^(#|ℹ) tests 124$' "${TEST_LOG}" \
-  || fail "expected exactly 124 tests"
-grep -Eq '^(#|ℹ) pass 124$' "${TEST_LOG}" \
-  || fail "expected exactly 124 passing tests"
+grep -Eq '^(#|ℹ) tests 130$' "${TEST_LOG}" \
+  || fail "expected exactly 130 tests"
+grep -Eq '^(#|ℹ) pass 130$' "${TEST_LOG}" \
+  || fail "expected exactly 130 passing tests"
 grep -Eq '^(#|ℹ) fail 0$' "${TEST_LOG}" \
   || fail "test failures were reported"
 grep -Eq '^(#|ℹ) skipped 0$' "${TEST_LOG}" \
   || fail "tests were skipped"
 grep -Eq '^(#|ℹ) cancelled 0$' "${TEST_LOG}" \
   || fail "tests were cancelled"
-pass "all 124 Phase 1-7 mock, security, settings, installer, cutover and rollback tests pass with no skip"
+pass "all 130 Phase 1-7 mock, security, settings, installer, cutover and rollback tests pass with no skip"
 
 if [[ "${MOCK_ONLY}" -eq 1 ]]; then
   echo "RESULT: PHASE 7 MOCK INSTALLER, CUTOVER, ROLLBACK AND FEDERATION PASS (REAL CODEX NOT RUN)"
@@ -296,4 +300,4 @@ NODE_OPTIONS=--no-warnings \
     --model "${CODEX_MODEL}" \
     --expected-version "${EXPECTED_CODEX_VERSION}"
 
-echo "RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION, IMAGEGEN AND DASHBOARD PASS"
+echo "RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION AND IMAGEGEN PASS"

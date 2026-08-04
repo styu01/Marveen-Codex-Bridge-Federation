@@ -45,7 +45,7 @@ Végső Phase 6.3 runtime PASS csak akkor mondható ki, ha megjelenik:
 ```text
 RESULT: PHASE 5 REAL APPROVAL AND MESSAGE TOOL PASS
 RESULT: PHASE 5.2 REAL IMAGEGEN AND ARTIFACT PASS
-RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION, IMAGEGEN AND DASHBOARD PASS
+RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION AND IMAGEGEN PASS
 ```
 
 ## 0.3.0 dependency, systemd és Federation peer-identitás kapu
@@ -120,3 +120,127 @@ Dátum: 2026-08-01
   `database=true`, `runtime=true`.
 
 RESULT: 0.3.1 RELEASE GATE PASS.
+
+## 0.3.2 artifact-UI tisztítás és verifikációs rendezés
+
+Dátum: 2026-08-02
+
+- a GitHub `main` 96 release-fájlja Git-blob szinten pontosan egyezett a
+  hitelesített 0.3.1 archívummal: PASS;
+- a változtatás előtti Node 22.23.1 Phase 7 mock baseline: 124/124 PASS;
+- a „Képartifactok” szekció, az artifact összegző kártya, a frontend
+  artifact-lista/content kérések és a `blob:` URL-készítés eltávolítása: PASS;
+- a dashboard summary felesleges artifact-leltározásának eltávolítása: PASS;
+- az artifact manager, migráció, regisztráló tool, validáció, immutable
+  tárolás, Federation receipt és hitelesített admin API regressziója: PASS;
+- a Phase 2/3/4/5 történeti kapuk deprecation stubként a Phase 7 kapura
+  irányítanak: PASS;
+- a sikertelen runtime-átállás a régi agent-threadet nem érvényteleníti, és a
+  régi runtime-konfigurációval újraindul: PASS;
+- a módosítás utáni Node 22.23.1 Phase 7 mock kapu: 125/125 PASS,
+  skip/fail/cancel: 0.
+
+A `gpt-5.6-sol` valós Codex App Server-kapu, a modellválasztó, a telepített
+service restart/rollback és a WSL production canary még nyitott. Ezért ez nem
+0.3.2 release PASS.
+
+RESULT: 0.3.2 PRE-SOL MOCK GATE PASS (REAL CODEX NOT RUN).
+
+## 0.3.2 Sol preflight és modellválasztó regresszió
+
+Dátum: 2026-08-02
+
+- a `15bd74c1eb1a4d938cf38551636359051dac4c65` pre-Sol commit izolált WSL
+  könyvtárból, valós Codex `0.145.0` és `gpt-5.6-sol` modellel futott: PASS;
+- valós szöveges Codex runtime, thread-folytatás, approval, Federation és
+  `gpt-image-2` artifact-folyamat: PASS;
+- záró valós kapu: `RESULT: PHASE 6.1 REAL CODEX, APPROVAL, FEDERATION AND
+  IMAGEGEN PASS`;
+- explicit `codex.allowedModels` validáció: PASS;
+- allowlist és élő `model/list` metszetének szerveroldali előállítása: PASS;
+- tetszőleges és fiókban nem elérhető modell elutasítása konfigurációírás előtt:
+  PASS;
+- modellváltás backup, audit, runtime restart és readiness útvonala: PASS;
+- sikertelen váltás automatikus rollbackje a régi modell és thread
+  megtartásával: PASS;
+- dashboard modellválasztó és admin-only API szerződés: PASS;
+- Node 22.23.1 teljes mock/security/settings/installer/cutover regresszió:
+  127/127 PASS, skip/fail/cancel: 0;
+- az `e0beee33d2078f03567e985f248e2476ec0da9e1` modellválasztós commit izolált
+  WSL-környezetben megismételt valós `gpt-5.6-sol` kapuja: PASS;
+- a megismételt kapu Node `22.23.1`, Codex CLI `0.145.0`, valós runtime,
+  thread-folytatás, approval, Federation és `gpt-image-2` artifact útvonala:
+  PASS;
+- a megismételt záró eredmény: `RESULT: PHASE 6.1 REAL CODEX, APPROVAL,
+  FEDERATION AND IMAGEGEN PASS`;
+- reprodukálható, explicit `--execute` production-canary eszköz Terra → Sol →
+  Terra, backup, audit, readiness, két Federation canary és tiltott modell
+  változatlansági ellenőrzéssel: PASS;
+- production-canary célzott regresszió: 3/3 PASS;
+- bővített Node 22.23.1 teljes regresszió: 130/130 PASS,
+  skip/fail/cancel: 0.
+
+Az éles systemd service Terra → Sol → Terra váltása és a Marveen 1.28.2
+Federation production canary még nem futott le. Ezért a jelölt továbbra sem
+tekinthető végleges 0.3.2 release-nek.
+
+RESULT: 0.3.2 SOL RUNTIME GATE PASS; WSL PRODUCTION CANARY REQUIRED.
+
+## 0.3.2 WSL candidate r2 workspace-javítás
+
+Dátum: 2026-08-04
+
+- az első 0.3.2 production telepítési kísérlet a teljes 130/130 mock kapu után
+  fail-closed módon megállt, mert a meglévő `programozo` workspace a Bridge
+  adatgyökerén kívül volt;
+- a 0.3.1 automatikus rollbackje readiness-ellenőrzéssel sikeresen lezárult;
+- az indokolatlan adatgyökér-korlát helyett a workspace-nek a felhasználó
+  valódi HOME könyvtárán belül kell maradnia, és nem lehet maga a HOME;
+- a runtime változatlanul csak abszolút, létező, nem symlinkkel átirányított
+  workspace-t fogad el;
+- a systemd unit minden konfigurált agent workspace-éhez külön
+  `ReadWritePaths` bejegyzést generál, ezért a szolgáltatás nem kap írási
+  jogot a teljes HOME könyvtárra;
+- célzott installer regresszió: 3/3 PASS;
+- teljes, natív Node 22.23.1 kapu: 130/130 PASS,
+  skip/fail/cancel: 0.
+
+Az r2 jelölt éles Terra → Sol → Terra WSL production canaryja ekkor még
+hátra volt.
+
+RESULT: 0.3.2 CANDIDATE R2 MOCK GATE PASS; WSL PRODUCTION CANARY REQUIRED.
+
+## 0.3.2 végleges WSL production kiadási kapu
+
+Dátum: 2026-08-04
+
+- SHA-256 ellenőrzés: PASS;
+- teljes Node 22.23.1 regressziós kapu: `130/130 PASS`;
+- fail/skip/cancel: `0`;
+- standalone systemd service aktiválás: PASS;
+- read-only production preflight: PASS;
+- Marveen baseline: `1.28.2`, Federation v1;
+- Bridge: `0.3.2`, aktív és ready;
+- Terra → Sol → Terra modellváltás: PASS;
+- modellenkénti readiness, backup és audit: PASS;
+- Sol Federation canary: `messageId=400`, `replyId=401`,
+  `FEDERATION_V032_SOL_20260804073959_OK`;
+- Terra Federation canary: `messageId=402`, `replyId=403`,
+  `FEDERATION_V032_TERRA_20260804073959_OK`;
+- tiltott `gpt-5.5` modell konfiguráció-, backup- és auditmutáció nélküli
+  elutasítása: PASS;
+- automatikus 0.3.1 rollback az első, túl szigorú workspace-kaput tartalmazó
+  jelöltnél: PASS;
+- a javított r2 cutover során rollback nem történt;
+- aktív release:
+  `/home/kisss/.local/share/marveen-codex-bridge/releases/0.3.2`;
+- helyreállítási mentés:
+  `/home/kisss/.local/state/marveen-codex-bridge/update-backups/0.3.2-20260804T073940Z`.
+
+```text
+RESULT: 0.3.2 PRODUCTION CANARY READ-ONLY PREFLIGHT PASS
+RESULT: 0.3.2 WSL SYSTEMD MODEL SELECTION AND MARVEEN 1.28.2 CANARY PASS
+RESULT: MARVEEN CODEX BRIDGE 0.3.2 PRODUCTION CUTOVER SUCCESSFUL
+```
+
+RESULT: 0.3.2 RELEASE GATE PASS.

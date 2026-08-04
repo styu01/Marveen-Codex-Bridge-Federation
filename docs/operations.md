@@ -1,4 +1,4 @@
-# Federation Bridge 0.3.1 üzemeltetés
+# Federation Bridge 0.3.2 üzemeltetés
 
 ## Állapotellenőrzés
 
@@ -7,7 +7,7 @@ systemctl --user is-active marveen-codex-bridge.service
 curl --fail --silent http://127.0.0.1:3431/readyz | python3 -m json.tool
 ```
 
-Elvárt verzió: `0.3.1`, `status: ready`, `database: true`, `runtime: true`.
+Elvárt verzió: `0.3.2`, `status: ready`, `database: true`, `runtime: true`.
 
 ## Konfiguráció
 
@@ -18,19 +18,35 @@ Alapértelmezett hely:
 ```
 
 A konfiguráció, tokenek és pairing fájlok privátak; ne kerüljenek Gitbe. A
-modell és effort az `agents` bejegyzésben állítható:
+szerveroldali modellengedélylista a `codex` blokkban, az aktuális modell és
+effort az `agents` bejegyzésben található:
 
 ```json
 {
-  "model": "gpt-5.6-terra",
-  "reasoningEffort": "high"
+  "codex": {
+    "allowedModels": ["gpt-5.6-terra", "gpt-5.6-sol"]
+  },
+  "agents": [{
+    "model": "gpt-5.6-terra",
+    "reasoningEffort": "high"
+  }]
 }
 ```
 
-A szerepkör és a négy támogatott effort a Bridge dashboardon szerkeszthető.
+A modell, a szerepkör és a négy támogatott effort a Bridge dashboardon
+szerkeszthető. A dashboard csak az `allowedModels` és az élő App Server
+`model/list` metszetét kínálja fel. A szerver mentés előtt ismét validál, ezért
+tetszőleges kliensérték nem kerülhet a konfigurációba.
+
 A mentés atomi, előtte privát backup készül, utána a Bridge kontrolláltan
-újraindítja a Codex runtime-ot és érvényteleníti a korábbi threadet. Kézi
-`systemctl restart` nem szükséges.
+újraindítja a Codex runtime-ot. A korábbi thread csak sikeres readiness után
+érvénytelenedik. Ha az új modell indulása vagy readiness ellenőrzése hibázik,
+a konfiguráció és a runtime automatikusan visszaáll, a régi thread pedig
+megmarad. Kézi `systemctl restart` nem szükséges.
+
+Ha az új és az előző runtime indítása is hibázik, az API
+`runtime_rollback_failed` 503 választ ad, az auditban
+`rollbackRuntimeReady: false` szerepel, és a Bridge nem tekinthető readynek.
 
 A backupok és a tartalommentes auditnapló helye:
 
@@ -41,6 +57,48 @@ A backupok és a tartalommentes auditnapló helye:
 Az API minden beállítási végpontja ugyanazt a szigorú admin bearer tokent
 követeli, mint a dashboard. Mentéshez és visszaállításhoz `confirm: true`,
 valamint egy nem üres módosítónév szükséges.
+
+## 0.3.2 production canary
+
+A 0.3.2 kiadási canary 2026-08-04-én PASS eredménnyel lezárult. Az alábbi
+eljárás új telepítés vagy lényeges környezetváltozás ellenőrzésére marad a
+repositoryban.
+
+Az aktivált service végső WSL-kapuja külön eszközzel fut. A parancs kizárólag
+Node 22 alatt, nem root felhasználóként működik, és megköveteli:
+
+- az aktív `marveen-codex-bridge.service` 0.3.2 verziót;
+- az inaktív legacy `bela-codex-bridge.service` unitot;
+- a telepített Marveen pontosan `1.28.2` verzióját;
+- privát, nem symlink admin-tokeneket és Bridge-konfigurációt;
+- az engedélyezett Federationt és a `codex` peert;
+- Terra kiinduló modellt és az élő modelllistában elérhető Sol modellt.
+
+Read-only preflight:
+
+```bash
+"$HOME/.nvm/versions/node/v22.23.1/bin/node" \
+  scripts/production-canary-0.3.2.mjs
+```
+
+Módosító végső kapu:
+
+```bash
+"$HOME/.nvm/versions/node/v22.23.1/bin/node" \
+  scripts/production-canary-0.3.2.mjs --execute
+```
+
+A módosító kapu Terra → Sol → Terra sorrendben fut, minden váltás után
+readiness-, backup- és auditbizonyítékot kér, majd mindkét modellel
+Marveen → Codex → Marveen exactly-once canaryt futtat. Végül allowlisten kívüli
+modellt küld a szervernek, és ellenőrzi, hogy a konfiguráció hash-e, a backupok
+és az audit változatlan maradtak. Ha a Sol szakasz után hiba történik, a script
+megpróbálja visszaállítani Terrát; cleanup-hibánál külön, nem elhallgatott
+hibával áll le.
+
+A post-write runtime-rollback determinisztikus ellenőrzése a teljes regressziós
+teszt része. Éles fault injection szándékosan nincs: a Codex bináris vagy az
+App Server mesterséges megrongálása a visszaállítást is veszélyeztetné.
 
 ## Bridge-frissítés
 
@@ -78,3 +136,15 @@ service-állapotot.
 4. A konfigurációt, adatbázist és release-eket csak külön mentés után töröld.
 
 A legacy adapter karanténját és a Phase 0 mentést ne töröld automatikusan.
+
+## Lezáráskori helyreállítási pont
+
+A bizonyított production cutover mentése:
+
+```text
+~/.local/state/marveen-codex-bridge/update-backups/0.3.2-20260804T073940Z
+```
+
+Ezt a kiadás lezárása nem törli automatikusan. Csak külön, ellenőrzött
+karbantartás során távolítható el, miután a 0.3.2 hosszabb távú működése és egy
+másik, külső mentés megléte igazolt.

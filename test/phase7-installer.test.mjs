@@ -78,18 +78,19 @@ exec /usr/bin/id "$@"
   const data = join(home, '.local/share/marveen-codex-bridge')
   const candidate = join(data, 'candidate')
   assert.equal(lstatSync(candidate).isSymbolicLink(), true)
-  assert.match(readlinkSync(candidate), /0\.3\.1$/)
+  assert.match(readlinkSync(candidate), /0\.3\.2$/)
   assert.equal(existsSync(join(data, 'current')), false)
   assert.equal(
     JSON.parse(readFileSync(join(
       data,
-      'releases/0.3.1/package.json',
+      'releases/0.3.2/package.json',
     ))).version,
-    '0.3.1',
+    '0.3.2',
   )
   const configRoot = join(home, '.config/marveen-codex-bridge')
   assert.equal(lstatSync(join(configRoot, 'config.json')).mode & 0o777, 0o600)
   const installedConfig = JSON.parse(readFileSync(join(configRoot, 'config.json'), 'utf8'))
+  assert.deepEqual(installedConfig.codex.allowedModels, ['gpt-5.6-terra', 'gpt-5.6-sol'])
   assert.equal(installedConfig.agents[0].reasoningEffort, 'high')
   assert.match(installedConfig.agents[0].developerInstructions, /Codex programozó/)
   assert.match(installedConfig.agents[0].developerInstructions, /marveen_agent_message_send/)
@@ -109,15 +110,15 @@ exec /usr/bin/id "$@"
   assert.doesNotMatch(unit, /bela-codex-bridge/)
   assert.match(
     unit,
-    /releases\/0\.3\.1\/src\/main\.mjs/,
+    /releases\/0\.3\.2\/src\/main\.mjs/,
   )
   assert.match(
     unit,
-    /MARVEEN_CODEX_BRIDGE_RUNTIME_MODULE=.*releases\/0\.3\.1\/src\/codex-runtime-module\.mjs/,
+    /MARVEEN_CODEX_BRIDGE_RUNTIME_MODULE=.*releases\/0\.3\.2\/src\/codex-runtime-module\.mjs/,
   )
   assert.match(
     unit,
-    /MARVEEN_CODEX_BRIDGE_BETTER_SQLITE3_PATH=.*releases\/0\.3\.1\/node_modules\/better-sqlite3/,
+    /MARVEEN_CODEX_BRIDGE_BETTER_SQLITE3_PATH=.*releases\/0\.3\.2\/node_modules\/better-sqlite3/,
   )
   assert.match(unit, /Environment=CODEX_HOME=.*\/\.codex/)
   assert.match(unit, /ReadWritePaths=.*\/\.config\/marveen-codex-bridge/)
@@ -138,7 +139,19 @@ exec /usr/bin/id "$@"
     /mv -f "\$\{UNIT_PATH\}\.rollback" "\$\{UNIT_PATH\}"[\s\S]*reset-failed marveen-codex-bridge\.service[\s\S]*ROLLBACK_READY/,
   )
 
-  const installedRelease = join(data, 'releases/0.3.1')
+  const legacyConfigPath = join(configRoot, 'config.json')
+  const legacyConfig = JSON.parse(readFileSync(legacyConfigPath, 'utf8'))
+  const externalWorkspace = join(home, 'projects/programozo')
+  mkdirSync(externalWorkspace, { recursive: true })
+  delete legacyConfig.codex.allowedModels
+  legacyConfig.agents[0].workspacePath = externalWorkspace
+  legacyConfig.agents[0].developerInstructions = 'Megőrzendő 0.3.1 production szerepkör.'
+  writeFileSync(legacyConfigPath, `${JSON.stringify(legacyConfig, null, 2)}\n`, {
+    mode: 0o600,
+  })
+  chmodSync(legacyConfigPath, 0o600)
+
+  const installedRelease = join(data, 'releases/0.3.2')
   const staleMarker = join(installedRelease, 'STALE-CANDIDATE')
   writeFileSync(staleMarker, 'must be replaced\n')
   const replacement = spawnSync('bash', [
@@ -164,9 +177,21 @@ exec /usr/bin/id "$@"
   assert.equal(replacement.status, 0, `${replacement.stdout}\n${replacement.stderr}`)
   assert.match(replacement.stdout, /Superseded inactive release retained at:/)
   assert.equal(existsSync(staleMarker), false)
+  const preservedLegacyConfig = JSON.parse(readFileSync(legacyConfigPath, 'utf8'))
+  assert.equal(preservedLegacyConfig.codex.allowedModels, undefined)
+  assert.equal(preservedLegacyConfig.agents[0].workspacePath, externalWorkspace)
+  assert.equal(
+    preservedLegacyConfig.agents[0].developerInstructions,
+    'Megőrzendő 0.3.1 production szerepkör.',
+  )
   assert.ok(
     readdirSync(join(data, 'releases'))
-      .some((name) => name.startsWith('.0.3.1.superseded.')),
+      .some((name) => name.startsWith('.0.3.2.superseded.')),
+  )
+  const replacementUnit = readFileSync(unitPath, 'utf8')
+  assert.match(
+    replacementUnit,
+    new RegExp(`ReadWritePaths=${JSON.stringify(externalWorkspace).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
   )
 })
 

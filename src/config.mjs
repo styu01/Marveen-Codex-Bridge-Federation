@@ -14,6 +14,8 @@ const LOOPBACK = new Set(['127.0.0.1', 'localhost', '::1'])
 const SANDBOX_MODES = new Set(['read-only', 'workspace-write'])
 const APPROVAL_POLICIES = new Set(['never', 'manual'])
 const REASONING_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max', 'ultra'])
+const DEFAULT_ALLOWED_MODELS = Object.freeze(['gpt-5.6-terra', 'gpt-5.6-sol'])
+const MODEL_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/
 
 function privateRegularFile(path, label) {
   const stat = lstatSync(path)
@@ -69,6 +71,23 @@ function boundedNonEmptyString(value, fallback, max, label) {
     throw new Error(`${label} is invalid`)
   }
   return selected
+}
+
+function modelAllowlist(value) {
+  const selected = value ?? DEFAULT_ALLOWED_MODELS
+  if (!Array.isArray(selected) || selected.length === 0 || selected.length > 20) {
+    throw new Error('codex.allowedModels must contain between 1 and 20 models')
+  }
+  const models = selected.map((model) => {
+    if (typeof model !== 'string' || !MODEL_NAME.test(model)) {
+      throw new Error('codex.allowedModels contains an invalid model name')
+    }
+    return model
+  })
+  if (new Set(models).size !== models.length) {
+    throw new Error('codex.allowedModels must not contain duplicates')
+  }
+  return models
 }
 
 function absoluteExistingDirectory(value, label) {
@@ -127,6 +146,7 @@ export function loadServiceConfig(path) {
     throw new Error('codex.expectedVersion must be an exact semantic version')
   }
   const runtimeRoot = absoluteExistingDirectory(input.codex.runtimeRoot, 'codex.runtimeRoot')
+  const allowedModels = modelAllowlist(input.codex.allowedModels)
   const adminTokenFile = resolveFile(configPath, input.admin?.tokenFile, 'admin.tokenFile')
   const adminToken = readToken(adminTokenFile, 'admin token file')
   if (!Array.isArray(input.agents) || input.agents.length === 0 || input.agents.length > 100) {
@@ -142,8 +162,11 @@ export function loadServiceConfig(path) {
     if (typeof agent.displayName !== 'string' || agent.displayName.length > 120) {
       throw new Error(`agent '${agent.id}' displayName is invalid`)
     }
-    if (typeof agent.model !== 'string' || agent.model.length === 0 || agent.model.length > 120) {
+    if (typeof agent.model !== 'string' || !MODEL_NAME.test(agent.model)) {
       throw new Error(`agent '${agent.id}' model is invalid`)
+    }
+    if (!allowedModels.includes(agent.model)) {
+      throw new Error(`agent '${agent.id}' model is not present in codex.allowedModels`)
     }
     const workspacePath = absoluteExistingDirectory(
       agent.workspacePath,
@@ -249,6 +272,7 @@ export function loadServiceConfig(path) {
       binary: codexBinary,
       expectedVersion: input.codex.expectedVersion,
       runtimeRoot,
+      allowedModels,
       startupTimeoutMs: integer(
         input.codex.startupTimeoutMs,
         60_000,
@@ -349,6 +373,7 @@ export function publicConfig(config) {
     storage: { configured: true },
     codex: {
       expectedVersion: config.codex.expectedVersion,
+      allowedModels: config.codex.allowedModels,
       runtimeRootConfigured: true,
       startupTimeoutMs: config.codex.startupTimeoutMs,
       requestTimeoutMs: config.codex.requestTimeoutMs,

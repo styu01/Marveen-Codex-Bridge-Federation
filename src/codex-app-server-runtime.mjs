@@ -148,6 +148,7 @@ export class CodexAppServerRuntime {
     this.federationStore = null
     this.artifacts = null
     this.imageCapability = null
+    this.availableModels = new Set()
   }
 
   manifestAgents() {
@@ -164,6 +165,33 @@ export class CodexAppServerRuntime {
 
   isReady() {
     return Boolean(this.compatible && this.client?.running && this.state)
+  }
+
+  selectableModels() {
+    if (!this.isReady()) return []
+    const allowed = this.config.codex?.allowedModels ?? []
+    return allowed.filter((model) => this.availableModels.has(model))
+  }
+
+  assertModelSelectable(model) {
+    const allowed = this.config.codex?.allowedModels ?? []
+    if (!allowed.includes(model)) {
+      const error = errorWithCode(
+        'model_not_allowed',
+        `Model ${model} is not permitted by codex.allowedModels`,
+      )
+      error.status = 400
+      throw error
+    }
+    if (!this.isReady() || !this.availableModels.has(model)) {
+      const error = errorWithCode(
+        'model_unavailable',
+        `Model ${model} is not currently available for this ChatGPT account`,
+      )
+      error.status = 409
+      throw error
+    }
+    return model
   }
 
   attachFederationStore(store) {
@@ -279,6 +307,7 @@ export class CodexAppServerRuntime {
           .map((model) => model?.model ?? model?.id)
           .filter((model) => typeof model === 'string'),
       )
+      this.availableModels = available
       for (const agent of this.agents.values()) {
         if (!available.has(agent.model)) {
           throw errorWithCode(
@@ -323,6 +352,7 @@ export class CodexAppServerRuntime {
       this.state.close()
       this.state = null
       this.approvals = null
+      this.availableModels = new Set()
       throw error
     }
     this.generation = this.state.nextAppServerGeneration()
@@ -352,6 +382,7 @@ export class CodexAppServerRuntime {
     this.approvals = null
     this.artifacts = null
     this.imageCapability = null
+    this.availableModels = new Set()
   }
 
   prepareStop() {
@@ -379,21 +410,29 @@ export class CodexAppServerRuntime {
       error.status = 409
       throw error
     }
+    this.assertModelSelectable(nextAgent.model)
 
     const previousAgent = { ...this.agents.get(nextAgent.id) }
-    if (this.state) this.state.invalidateThread(nextAgent.id)
     await this.stop()
     this.agents.set(nextAgent.id, { ...nextAgent })
     this.config.agents = [...this.agents.values()]
     try {
       await this.start()
+      if (this.state) this.state.invalidateThread(nextAgent.id)
     } catch (error) {
       this.agents.set(previousAgent.id, previousAgent)
       this.config.agents = [...this.agents.values()]
       try {
         await this.start()
       } catch (rollbackError) {
-        error.rollbackError = rollbackError
+        const fatal = errorWithCode(
+          'runtime_rollback_failed',
+          'New agent configuration failed and the previous runtime could not be restored',
+          error,
+        )
+        fatal.status = 503
+        fatal.rollbackError = rollbackError
+        throw fatal
       }
       throw error
     }
