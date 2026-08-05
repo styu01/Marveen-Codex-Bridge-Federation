@@ -1,6 +1,6 @@
 # Marveen Codex Bridge Federation 0.3.2
 
-Önálló, frissítésálló Federation Bridge a Marveen/Béla és a valódi OpenAI
+Önálló, frissítésálló Federation Bridge a Marveen és a valódi OpenAI
 Codex CLI között. A Bridge a Marveenben egy föderált `programozo` agentet tesz
 elérhetővé, miközben a Codex futtatása, állapota, jóváhagyásai és artifactjai
 egy külön szolgáltatásban maradnak.
@@ -178,7 +178,7 @@ cat "$HOME/.config/marveen-codex-bridge/admin.token"
 
 | Komponens | Felelősség |
 |---|---|
-| Marveen/Béla | főagent, delegálás, Federation peer-konfiguráció |
+| Marveen | főagent, delegálás, Federation peer-konfiguráció |
 | Federation HTTP | manifest és hitelesített inbox szerződés |
 | Bridge service | routing, állapotgépek, API, dashboard, worker orchestration |
 | Codex App Server | modellthread, turnök, toolok és approval kérések |
@@ -189,7 +189,7 @@ cat "$HOME/.config/marveen-codex-bridge/admin.token"
 A Marveenből érkező feladat útja:
 
 ```text
-Marveen/Béla
+Marveen
   → POST /api/federation/inbox
   → durable Bridge inbox
   → Codex programozo run
